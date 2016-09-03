@@ -166,12 +166,12 @@ show:
 
     lda #$00
     sta screen_low
-    lda #$2c
+    lda #$18
     sta screen_high
 
     sei
 
-    lda #initial_scanlines  ; Number of MODE 6 scanlines to display
+    lda #initial_scanlines  ; Number of MODE 3 scanlines to display
     sta text_lines
 
     lda #initial_frame_delay    ; Number of frames to show each displacement.
@@ -235,7 +235,7 @@ show:
 
 main_loop:
 
-    lda #$30                ; MODE 6, no sound
+    lda #$18                ; MODE 3, no sound
     sta $fe07
     sta $282
 
@@ -253,7 +253,7 @@ main_loop:
 
     jsr wait_scanlines
 
-    lda #$28                ; MODE 5, no sound
+    lda #$08                ; MODE 1, no sound
     sta $fe07
     sta $282
 
@@ -314,30 +314,30 @@ main_loop:
     clc
     lda text_lines
     adc #10                 ; Increase the number of half scanlines to cover
-    cmp #max_scanlines      ; another MODE 6 character row.
+    cmp #max_scanlines      ; another MODE 3 character row.
     bcc reset_vcounter
 
         clc
         lda screen_high
-        cmp #$2a
+        cmp #$14
         bne up_one_line
         lda screen_low
-        cmp #$20
+        cmp #$40
         bne up_one_line
 
-            lda #$80
+            lda #$00
             sta screen_low
-            lda #$3d
+            lda #$3b
             sta screen_high
             jmp store_screen_address
 
         up_one_line:
         sec                     ; Update the screen start address.
         lda screen_low
-        sbc #$a0
+        sbc #$40
         sta screen_low
         lda screen_high
-        sbc #0
+        sbc #$01
         sta screen_high
 
     store_screen_address:
@@ -389,7 +389,7 @@ end_loop:
 
     lda #$00
     sta $fe02
-    lda #$2c
+    lda #$18
     sta $fe03
 
     jmp service_command_claimed
@@ -467,38 +467,38 @@ show_message:
     rts
 
 text:
-.byte 22,5, 23,1,0,0,0,0,0,0,0,0
+.byte 22,1, 23,1,0,0,0,0,0,0,0,0
 .byte 31,0,0
-.byte "+--------00--------+"
-.byte "1 | X X X X X X X X|"
-.byte "2 |X X           X |"
-.byte "3 | X  Vertical X X|"
-.byte "4 |X  scrolling  X |"
-.byte "5 | X    demo   X X|"
-.byte "6 |X X X       X X |"
-.byte "7 | X X X X X X X X|"
-.byte "8 |X X X X X X X X |"
-.byte "9 | X X X X X X X X|"
-.byte "a |X X X X X X X X |"
-.byte "b | X X X X X X X X|"
-.byte "c |X X X X X X X X |"
-.byte "d | X X X X X X X X|"
-.byte "e |X X X X X X X X |"
-.byte "f | X X X X X X X X|"
-.byte "10|X X X X X X X X |"
-.byte "11| X X X X X X X X|"
-.byte "12|X X X X X X X X |"
-.byte "13| X X X X X X X X|"
-.byte "14|X X X X X X X X |"
-.byte "15| X       X X X X|"
-.byte "16|X  Press    X X |"
-.byte "17| X   SPACE   X X|"
-.byte "18|X X    to     X |"
-.byte "19| X X     exit  X|"
-.byte "1a|X X X X       X |"
-.byte "1b| X X X X X X X X|"
-.byte "1c|X X X X X X X X |"
-.byte "1d| X X X X X X X X|"
-.byte "1e|X X X X X X X X |"
-.byte "+--------1f--------"
+.byte "+------------------00------------------+"
+.byte "1 | X X X X X X X X X X X X X X X X X X|"
+.byte "2 |X X X X X X X           X X X X X X |"
+.byte "3 | X X X X X X  Vertical X X X X X X X|"
+.byte "4 |X X X X X X  scrolling  X X X X X X |"
+.byte "5 | X X X X X X    demo   X X X X X X X|"
+.byte "6 |X X X X X X X X       X X X X X X X |"
+.byte "7 | X X X X X X X X X X X X X X X X X X|"
+.byte "8 |X X X X X X X X X X X X X X X X X X |"
+.byte "9 | X X X X X X X X X X X X X X X X X X|"
+.byte "a |X X X X X X X X X X X X X X X X X X |"
+.byte "b | X X X X X X X X X X X X X X X X X X|"
+.byte "c |X X X X X X X X X X X X X X X X X X |"
+.byte "d | X X X X X X X X X X X X X X X X X X|"
+.byte "e |X X X X X X X X X X X X X X X X X X |"
+.byte "f | X X X X X X X X X X X X X X X X X X|"
+.byte "10|X X X X X X X X X X X X X X X X X X |"
+.byte "11| X X X X X X X X X X X X X X X X X X|"
+.byte "12|X X X X X X X X X X X X X X X X X X |"
+.byte "13| X X X X X X X X X X X X X X X X X X|"
+.byte "14|X X X X X X X X X X X X X X X X X X |"
+.byte "15| X X X X X X       X X X X X X X X X|"
+.byte "16|X X X X X X  Press    X X X X X X X |"
+.byte "17| X X X X X X   SPACE   X X X X X X X|"
+.byte "18|X X X X X X X    to     X X X X X X |"
+.byte "19| X X X X X X X     exit  X X X X X X|"
+.byte "1a|X X X X X X X X X       X X X X X X |"
+.byte "1b| X X X X X X X X X X X X X X X X X X|"
+.byte "1c|X X X X X X X X X X X X X X X X X X |"
+.byte "1d| X X X X X X X X X X X X X X X X X X|"
+.byte "1e|X X X X X X X X X X X X X X X X X X |"
+.byte "+------------------1f------------------"
 text_end:

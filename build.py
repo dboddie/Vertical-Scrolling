@@ -43,7 +43,8 @@ if __name__ == "__main__":
     
     # Assemble the files.
     assemble = [("vscroll-ram.oph", "VSCROLL"),
-                ("vscroll.oph", "vscroll.rom")]
+                ("vscroll.oph", "vscroll.rom"),
+                ("vscroll1.oph", "vscroll1.rom")]
     
     code_data = {}
     
