@@ -1,0 +1,486 @@
+; Copyright (C) 2015 David Boddie <david@boddie.org.uk>
+;
+; This program is free software: you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version.
+;
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+.alias long_field 60
+.alias short_field 59
+
+.alias fields $70
+.alias first_field $70
+.alias second_field $71
+
+.alias frame_counter $72
+.alias text_lines $73
+.alias frame_delay $74
+.alias palette_lines $75
+
+.alias initial_frame_delay 1
+.alias initial_scanlines 0
+.alias max_scanlines 40
+.alias max_palette_lines 32
+
+.alias screen_low $76
+.alias screen_high $77
+
+.org $8000
+
+rom_start:
+.byte 0, 0, 0
+jmp service_entry
+
+; ROM type
+.byte $82       ; 6502 code (2), language ($40), service ($80)
+
+copyright_offset:
+.byte [copyright_string - rom_start - 1]
+
+; Version
+.byte 1
+
+; Title string
+.byte "Vertical scrolling test", 0
+
+; Version string
+.byte "1.0", 0
+
+copyright_string:
+.byte "(C) 2015 David Boddie", 0
+
+; Second processor relocation address
+.byte 0, $80, 0, 0
+
+service_entry:
+
+    cmp #4
+    beq service_command
+
+    service_entry_exit:
+    clc
+    rts
+
+commands:
+.byte <show_name, >show_name
+
+show_name: .byte "SCROLL", 13
+
+routines:
+.byte <show, >show
+
+service_command:
+
+    tya                         ; push Y and X registers onto the stack
+    pha
+    txa
+    pha
+
+    clc
+    tya         ; Store the address of the command line in an new address that
+    adc $f2     ; can used zero-based post-indexed addressing.
+    sta $74
+    lda $f3
+    adc #0
+    sta $75
+    clc
+
+    ldx #0
+    service_command_loop:
+
+        lda commands,x
+        sta $72
+        lda [commands + 1],x
+        sta $73
+
+        ldy #0
+
+        service_command_test_loop:
+
+            lda ($72),y
+            cmp ($74),y
+            bne service_command_next
+            iny
+            cmp #13
+            bne service_command_test_loop
+
+        txa
+        lda routines,x
+        sta $72
+        lda [routines + 1],x
+        sta $73
+
+        jmp ($72)
+
+        service_command_next:
+
+        inx
+        inx
+        cpx #2
+        bne service_command_loop
+
+    service_command_not_found:
+    pla                         ; pop Y and X registers off the stack
+    tax
+    pla
+    tay
+    lda #4                      ; restore A
+    rts
+
+show:
+
+    jsr show_message
+
+    lda #$00
+    sta screen_low
+    lda #$2c
+    sta screen_high
+
+    sei
+
+    lda #initial_scanlines  ; Number of MODE 6 scanlines to display
+    sta text_lines
+
+    lda #initial_frame_delay    ; Number of frames to show each displacement.
+    sta frame_delay
+
+    lda #max_palette_lines
+    sta palette_lines
+
+    ; Clear the vsync interrupt bit.
+
+    lda #$10
+    sta $fe05
+
+    ; Wait until the vsync bit is cleared.
+
+    lda #$04
+    wait0:
+    bit $fe00
+    bne wait0
+
+    ; Wait until the vsync bit is set, indicating the start of a new frame.
+
+    wait1:
+    bit $fe00
+    beq wait1
+
+    lda #$10
+    sta $fe05
+
+    calibration:
+
+        jsr calibrate
+        stx $70
+    
+        jsr calibrate
+        stx $71
+
+        lda $70
+        cmp $71
+        beq calibration
+
+    bcs highest_first
+
+    lda #short_field        ; The first value is the lowest, so store a
+    sta first_field         ; slightly lower value than the second value in
+    lda #long_field         ; the first slot.
+    sta second_field
+    bcc pre_loop
+
+    highest_first:
+
+    lda #long_field         ; The first value is the highest, so store a
+    sta first_field         ; slightly lower value in the second slot.
+    lda #short_field
+    sta second_field
+
+    pre_loop:
+
+    ldx #0
+    stx frame_counter
+
+main_loop:
+
+    lda #$30                ; MODE 6, no sound
+    sta $fe07
+    sta $282
+
+    lda #$ff                ; Blank the palette.
+    sta $fe08
+    sta $fe09
+
+    start:
+
+    ldx frame_counter       ; 3 c
+    lda fields,x            ; 4 c
+    clc
+    adc text_lines
+    tax                     ; 2 c
+
+    jsr wait_scanlines
+
+    lda #$28                ; MODE 5, no sound
+    sta $fe07
+    sta $282
+
+    ldx palette_lines
+    cpx #0
+    beq show_palette
+
+    jsr wait_scanlines
+
+    show_palette:
+
+    lda #$73
+    sta $fe08
+    lda #$f1
+    sta $fe09
+
+    dec frame_delay
+    bne next_frame
+    lda #initial_frame_delay
+    sta frame_delay
+
+    lda #121
+    ldx #0
+    jsr $fff4
+
+    cpx #98
+    beq end_loop
+;    cpx #39
+;    beq k0_pressed
+;    cpx #48
+;    beq k1_pressed
+;    cpx #49
+;    beq k2_pressed
+;    cpx #17
+;    beq k3_pressed
+;    cpx #18
+;    beq k4_pressed
+;    jmp calculate_remaining_lines
+;
+;    k0_pressed:
+;    lda #0
+;    jmp reset_vcounter
+;
+;    k1_pressed:
+;    lda #10
+;    jmp reset_vcounter
+;
+;    k2_pressed:
+;    lda #20
+;    jmp reset_vcounter
+;
+;    k3_pressed:
+;    lda #30
+;    jmp reset_vcounter
+;
+;    k4_pressed:
+    
+    clc
+    lda text_lines
+    adc #10                 ; Increase the number of half scanlines to cover
+    cmp #max_scanlines      ; another MODE 6 character row.
+    bcc reset_vcounter
+
+        clc
+        lda screen_high
+        cmp #$2a
+        bne up_one_line
+        lda screen_low
+        cmp #$20
+        bne up_one_line
+
+            lda #$80
+            sta screen_low
+            lda #$3d
+            sta screen_high
+            jmp store_screen_address
+
+        up_one_line:
+        sec                     ; Update the screen start address.
+        lda screen_low
+        sbc #$a0
+        sta screen_low
+        lda screen_high
+        sbc #0
+        sta screen_high
+
+    store_screen_address:
+    lda screen_low
+    sta $fe02
+    lda screen_high
+    sta $fe03
+
+    lda initial_scanlines
+
+    reset_vcounter:
+    sta text_lines
+
+    calculate_remaining_lines:
+
+    lda #max_palette_lines
+    sec
+    sbc text_lines
+    sta palette_lines
+    clc
+
+    next_frame:
+
+    ; Wait for the vsync bit to be set.
+
+    lda #$04                ; 2 c
+    wait2:
+    bit $fe00               ; 4 c
+    beq wait2               ; 3 c
+
+    lda #$10                ; 2 c
+    sta $fe05               ; 4 c
+
+    lda frame_counter       ; 3 c
+    eor #1                  ; 2 c
+    sta frame_counter       ; 3 c
+
+    jmp main_loop
+
+end_loop:
+
+    cli
+
+    ; Restore the palette.
+    lda #$73
+    sta $fe08
+    lda #$f1
+    sta $fe09
+
+    lda #$00
+    sta $fe02
+    lda #$2c
+    sta $fe03
+
+service_command_claimed:
+
+    pla                         ; pop Y and X registers off the stack
+    tax
+    pla
+    tay
+    lda #0                      ; claim service command
+    rts
+
+calibrate:
+
+    ; Count the number of half scanlines to the end of the display. This will
+    ; wrap around in an 8-bit value.
+
+    lda #$04                ; 2 c
+    ldx #0                  ; 2 c
+    calibration_loop:
+
+        ldy #11             ; 2 c
+        delay1:
+            dey             ; 2 c
+            bne delay1      ; 3 c
+
+        inx                 ; 2 c
+
+        ; Continue until the vsync interrupt bit is set again.
+
+        bit $fe00           ; 4 c
+        beq calibration_loop; 3 c
+                            ; (11 * 5) + 2 + 9 = 66
+
+    ; Clear the vsync interrupt bit.
+
+    lda #$10
+    sta $fe05
+
+    rts
+
+wait_scanlines:
+
+    wait_loop:
+
+        ; Wait for around 64us (128 cycles) per half scanline.
+
+        ldy #23             ; 2 c
+        delay0:
+            dey             ; 2 c
+            bne delay0      ; 3 c
+
+        nop                 ; 2 c
+        dex                 ; 2 c
+        bne wait_loop       ; 3 c
+                            ; (23 * 5) + 2 + 7 = 124
+    rts
+
+show_message:
+
+    ldy #0
+    lda #<text
+    sta $80
+    lda #>text
+    sta $81
+
+    print_loop:
+        lda ($80),y
+        jsr $ffee
+        inc $80
+        bne print_loop_next
+        inc $81
+
+        print_loop_next:
+        lda $81
+        cmp #>text_end
+        bne print_loop
+        lda $80
+        cmp #<text_end
+        bne print_loop
+
+    clc
+    rts
+
+text:
+.byte 22,5, 23,1,0,0,0,0,0,0,0,0
+.byte 31,0,0
+.byte "+--------00--------+"
+.byte "1 | X X X X X X X X|"
+.byte "2 |X X X X X X X X |"
+.byte "3 | X X X X X X X X|"
+.byte "4 |X X X X X X X X |"
+.byte "5 | X X X X X X X X|"
+.byte "6 |X X X X X X X X |"
+.byte "7 | X X X X X X X X|"
+.byte "8 |X X X X X X X X |"
+.byte "9 | X X X X X X X X|"
+.byte "a |X X X X X X X X |"
+.byte "b | X X X X X X X X|"
+.byte "c |X X X X X X X X |"
+.byte "d | X X X X X X X X|"
+.byte "e |X X X X X X X X |"
+.byte "f | X X X X X X X X|"
+.byte "10|X X X X X X X X |"
+.byte "11| X X X X X X X X|"
+.byte "12|X X X X X X X X |"
+.byte "13| X X X X X X X X|"
+.byte "14|X X X X X X X X |"
+.byte "15| X X X X X X X X|"
+.byte "16|X X X X X X X X |"
+.byte "17| X X X X X X X X|"
+.byte "18|X X X X X X X X |"
+.byte "19| X X X X X X X X|"
+.byte "1a|X X X X X X X X |"
+.byte "1b| X X X X X X X X|"
+.byte "1c|X X X X X X X X |"
+.byte "1d| X X X X X X X X|"
+.byte "1e|X X X X X X X X |"
+.byte "+--------1f--------"
+text_end:
