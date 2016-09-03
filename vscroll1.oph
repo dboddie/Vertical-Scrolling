@@ -33,6 +33,8 @@
 .alias screen_low $76
 .alias screen_high $77
 
+.alias scroll_offset $78
+
 .org $8000
 
 rom_start:
@@ -232,6 +234,7 @@ show:
 
     ldx #0
     stx frame_counter
+    stx scroll_offset       ; Initialise the scroll offset.
 
 main_loop:
 
@@ -247,11 +250,11 @@ main_loop:
 
     ldx frame_counter       ; 3 c
     lda fields,x            ; 4 c
-    clc
-    adc text_lines
-    tax                     ; 2 c
-
+    tax
     jsr wait_scanlines
+
+    ldx text_lines
+    jsr block_scanlines
 
     lda #$08                ; MODE 1, no sound
     sta $fe07
@@ -261,19 +264,32 @@ main_loop:
     cpx #0
     beq show_palette
 
-    jsr wait_scanlines
+    jsr block_scanlines
 
     show_palette:
 
-    lda #$73
+    lda scroll_offset
+    and #$01
+    tax
+
+    lda palette_fe08,x
     sta $fe08
-    lda #$f1
+    lda palette_fe09,x
+    sta $fe09
+
+    ldx #8
+    jsr block_scanlines
+
+    lda #$ff
+    sta $fe08
     sta $fe09
 
     dec frame_delay
     bne next_frame
     lda #initial_frame_delay
     sta frame_delay
+
+    inc scroll_offset
 
     lda #121
     ldx #0
@@ -440,6 +456,26 @@ wait_scanlines:
                             ; (23 * 5) + 2 + 7 = 124
     rts
 
+block_scanlines:
+
+    block_loop:
+
+        ; Wait for around 24us (48 cycles) per scanline and block by reading RAM.
+
+        ldy #9              ; 2 c
+        delay2:
+            dey             ; 2 c
+            bne delay2      ; 3 c
+
+        nop                 ; 2 c
+                            ; 49 c
+        
+        lda $70
+        dex                 ; 2 c
+        bne block_loop      ; 3 c
+
+    rts
+
 show_message:
 
     ldy #0
@@ -502,3 +538,27 @@ text:
 .byte "1e|X X X X X X X X X X X X X X X X X X |"
 .byte "+------------------1f------------------"
 text_end:
+
+; fe08 values
+.alias g2 $04
+.alias g3 $08
+.alias b0 $10
+.alias b1 $20
+.alias b2 $40
+.alias b3 $80
+
+; fe09 values
+.alias r0 $01
+.alias r1 $02
+.alias r2 $04
+.alias r3 $08
+.alias g0 $10
+.alias g1 $20
+
+palette_fe08:
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2 | g3 | b3]]
+
+palette_fe09:
+.byte [$ff ^ [r1 | r2 | r3 | b3]]
+.byte [$ff ^ [r1 | r2 | b3]]
