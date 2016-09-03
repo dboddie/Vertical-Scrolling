@@ -63,77 +63,102 @@ copyright_string:
 service_entry:
 
     cmp #4
-    beq service_command
+    bne service_entry_not_4
+    jmp service_command
+
+    service_entry_not_4:
+    cmp #9
+    beq service_help
 
     service_entry_exit:
     clc
     rts
 
-commands:
-.byte <show_name, >show_name
-
 show_name: .byte "SCROLL", 13
+show_name_end:
 
-routines:
-.byte <show, >show
+help_text:
+.byte "Type *SCROLL to see a scrolling demo.", 13
+help_text_end:
+
+service_help:
+
+    pha
+    tya
+    pha
+    txa
+    pha
+
+    lda ($f2),y
+    cmp #13
+    bne service_help_compare
+
+    ldx #0
+    service_help_loop0:
+        lda show_name,x
+        jsr $ffee
+        inx
+        cpx #[show_name_end - show_name]
+        bne service_help_loop0
+
+    beq service_command_claimed
+
+    service_help_compare:
+
+    ldx #0
+    service_help_loop1:
+        lda ($f2),y
+        cmp show_name,x
+        bne service_command_not_found
+        iny
+        inx
+        cmp #13
+        bne service_help_loop1
+
+    ldx #0
+    service_help_loop2:
+        lda help_text,x
+        jsr $ffee
+        inx
+        cpx #[help_text_end - help_text]
+        bne service_help_loop2
+
+service_command_claimed:
+
+    pla                         ; pop Y and X registers off the stack
+    tax
+    pla
+    tay
+    pla
+    lda #0                      ; claim service command
+    rts
+
+service_command_not_found:
+    pla                         ; pop Y and X registers off the stack
+    tax
+    pla
+    tay
+    pla
+    rts
 
 service_command:
 
+    pha
     tya                         ; push Y and X registers onto the stack
     pha
     txa
     pha
 
-    clc
-    tya         ; Store the address of the command line in an new address that
-    adc $f2     ; can used zero-based post-indexed addressing.
-    sta $74
-    lda $f3
-    adc #0
-    sta $75
-    clc
-
     ldx #0
     service_command_loop:
 
-        lda commands,x
-        sta $72
-        lda [commands + 1],x
-        sta $73
-
-        ldy #0
-
-        service_command_test_loop:
-
-            lda ($72),y
-            cmp ($74),y
-            bne service_command_next
-            iny
-            cmp #13
-            bne service_command_test_loop
-
-        txa
-        lda routines,x
-        sta $72
-        lda [routines + 1],x
-        sta $73
-
-        jmp ($72)
-
-        service_command_next:
-
+        lda ($f2),y
+        cmp show_name,x
+        bne service_command_not_found
+        iny
         inx
-        inx
-        cpx #2
+        cmp #13
         bne service_command_loop
-
-    service_command_not_found:
-    pla                         ; pop Y and X registers off the stack
-    tax
-    pla
-    tay
-    lda #4                      ; restore A
-    rts
 
 show:
 
@@ -367,14 +392,7 @@ end_loop:
     lda #$2c
     sta $fe03
 
-service_command_claimed:
-
-    pla                         ; pop Y and X registers off the stack
-    tax
-    pla
-    tay
-    lda #0                      ; claim service command
-    rts
+    jmp service_command_claimed
 
 calibrate:
 
@@ -453,11 +471,11 @@ text:
 .byte 31,0,0
 .byte "+--------00--------+"
 .byte "1 | X X X X X X X X|"
-.byte "2 |X X X X X X X X |"
-.byte "3 | X X X X X X X X|"
-.byte "4 |X X X X X X X X |"
-.byte "5 | X X X X X X X X|"
-.byte "6 |X X X X X X X X |"
+.byte "2 |X X           X |"
+.byte "3 | X  Vertical X X|"
+.byte "4 |X  scrolling  X |"
+.byte "5 | X    demo   X X|"
+.byte "6 |X X X       X X |"
 .byte "7 | X X X X X X X X|"
 .byte "8 |X X X X X X X X |"
 .byte "9 | X X X X X X X X|"
@@ -472,12 +490,12 @@ text:
 .byte "12|X X X X X X X X |"
 .byte "13| X X X X X X X X|"
 .byte "14|X X X X X X X X |"
-.byte "15| X X X X X X X X|"
-.byte "16|X X X X X X X X |"
-.byte "17| X X X X X X X X|"
-.byte "18|X X X X X X X X |"
-.byte "19| X X X X X X X X|"
-.byte "1a|X X X X X X X X |"
+.byte "15| X       X X X X|"
+.byte "16|X  Press    X X |"
+.byte "17| X   SPACE   X X|"
+.byte "18|X X    to     X |"
+.byte "19| X X     exit  X|"
+.byte "1a|X X X X       X |"
 .byte "1b| X X X X X X X X|"
 .byte "1c|X X X X X X X X |"
 .byte "1d| X X X X X X X X|"

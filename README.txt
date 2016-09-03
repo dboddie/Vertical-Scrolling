@@ -25,6 +25,25 @@ run it, passing the name of the UEF file that should be created; for example:
 If successful, the `temp.uef` file should be created, and this can be used as
 outlined above.
 
+Running the Examples
+--------------------
+
+It should be possible to load the UEF file into an Electron emulator and, from
+the BASIC prompt, run the demonstration with the following command:
+
+  *RUN VSCROLL
+
+If you can load the ROM image into an emulator then the *HELP command should
+give you information on how to start the ROM-based demo:
+
+  *HELP SCROLL
+
+Typically, it should be sufficient to type
+
+  *SCROLL
+
+to start the demo.
+
 License
 -------
 
