@@ -235,7 +235,7 @@ show:
 
 main_loop:
 
-    lda #$30                ; MODE 6, no sound
+    lda #$30                ; MODE 6
     sta $fe07
     sta $282
 
@@ -253,7 +253,7 @@ main_loop:
 
     jsr wait_scanlines
 
-    lda #$28                ; MODE 5, no sound
+    lda #$28                ; MODE 5
     sta $fe07
     sta $282
 
@@ -468,7 +468,7 @@ show_message:
 
 text:
 .byte 22,5, 23,1,0,0,0,0,0,0,0,0
-.byte 31,0,0
+.byte 19,3,0,0,0,0
 .byte "+--------00--------+"
 .byte "1 | X X X X X X X X|"
 .byte "2 |X X           X |"

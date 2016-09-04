@@ -110,7 +110,7 @@ show:
 
 main_loop:
 
-    lda #$30                ; MODE 6, no sound
+    lda #$30                ; MODE 6
     sta $fe07
     sta $282
 
@@ -128,7 +128,7 @@ main_loop:
 
     jsr wait_scanlines
 
-    lda #$28                ; MODE 5, no sound
+    lda #$28                ; MODE 5
     sta $fe07
     sta $282
 
@@ -343,14 +343,14 @@ show_message:
 
 text:
 .byte 22,5, 23,1,0,0,0,0,0,0,0,0
-.byte 31,0,0
+.byte 19,3,0,0,0,0
 .byte "+--------00--------+"
 .byte "1 | X X X X X X X X|"
-.byte "2 |X X X X X X X X |"
-.byte "3 | X X X X X X X X|"
-.byte "4 |X X X X X X X X |"
-.byte "5 | X X X X X X X X|"
-.byte "6 |X X X X X X X X |"
+.byte "2 |X X           X |"
+.byte "3 | X  Vertical X X|"
+.byte "4 |X  scrolling  X |"
+.byte "5 | X    demo   X X|"
+.byte "6 |X X X       X X |"
 .byte "7 | X X X X X X X X|"
 .byte "8 |X X X X X X X X |"
 .byte "9 | X X X X X X X X|"
@@ -365,12 +365,12 @@ text:
 .byte "12|X X X X X X X X |"
 .byte "13| X X X X X X X X|"
 .byte "14|X X X X X X X X |"
-.byte "15| X X X X X X X X|"
-.byte "16|X X X X X X X X |"
-.byte "17| X X X X X X X X|"
-.byte "18|X X X X X X X X |"
-.byte "19| X X X X X X X X|"
-.byte "1a|X X X X X X X X |"
+.byte "15| X       X X X X|"
+.byte "16|X  Press    X X |"
+.byte "17| X   SPACE   X X|"
+.byte "18|X X    to     X |"
+.byte "19| X X     exit  X|"
+.byte "1a|X X X X       X |"
 .byte "1b| X X X X X X X X|"
 .byte "1c|X X X X X X X X |"
 .byte "1d| X X X X X X X X|"
