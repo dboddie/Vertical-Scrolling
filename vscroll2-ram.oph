@@ -13,8 +13,8 @@
 ; You should have received a copy of the GNU General Public License
 ; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-.alias long_field 58
-.alias short_field 57
+.alias long_field 107
+.alias short_field 106
 
 .alias fields $70
 .alias first_field $70
@@ -41,7 +41,7 @@ show:
 
     lda #$00
     sta screen_low
-    lda #$2c
+    lda #$18
     sta screen_high
 
     sei
@@ -110,7 +110,7 @@ show:
 
 main_loop:
 
-    lda #$30                ; MODE 6
+    lda #$18                ; MODE 3
     sta $fe07
     sta $282
 
@@ -128,7 +128,7 @@ main_loop:
 
     jsr wait_scanlines
 
-    lda #$28                ; MODE 5
+    lda #$10                ; MODE 2
     sta $fe07
     sta $282
 
@@ -156,36 +156,36 @@ main_loop:
 
     cpx #98
     beq end_loop
-;    cpx #39
-;    beq k0_pressed
-;    cpx #48
-;    beq k1_pressed
-;    cpx #49
-;    beq k2_pressed
-;    cpx #17
-;    beq k3_pressed
-;    cpx #18
-;    beq k4_pressed
-;    jmp calculate_remaining_lines
-;
-;    k0_pressed:
-;    lda #0
-;    jmp reset_vcounter
-;
-;    k1_pressed:
-;    lda #10
-;    jmp reset_vcounter
-;
-;    k2_pressed:
-;    lda #20
-;    jmp reset_vcounter
-;
-;    k3_pressed:
-;    lda #30
-;    jmp reset_vcounter
-;
-;    k4_pressed:
-    
+    cpx #39
+    beq k0_pressed
+    cpx #48
+    beq k1_pressed
+    cpx #49
+    beq k2_pressed
+    cpx #17
+    beq k3_pressed
+    cpx #18
+    beq k4_pressed
+    jmp calculate_remaining_lines
+
+    k0_pressed:
+    lda #0
+    jmp reset_vcounter
+
+    k1_pressed:
+    lda #10
+    jmp reset_vcounter
+
+    k2_pressed:
+    lda #20
+    jmp reset_vcounter
+
+    k3_pressed:
+    lda #30
+    jmp reset_vcounter
+
+    k4_pressed:
+
     clc
     lda text_lines
     adc #10                 ; Increase the number of half scanlines to cover
@@ -194,25 +194,25 @@ main_loop:
 
         clc
         lda screen_high
-        cmp #$2a
+        cmp #$14
         bne up_one_line
         lda screen_low
-        cmp #$20
+        cmp #$40
         bne up_one_line
 
-            lda #$80
+            lda #$00
             sta screen_low
-            lda #$3d
+            lda #$3b
             sta screen_high
             jmp store_screen_address
 
         up_one_line:
         sec                     ; Update the screen start address.
         lda screen_low
-        sbc #$a0
+        sbc #$40
         sta screen_low
         lda screen_high
-        sbc #0
+        sbc #$10
         sta screen_high
 
         store_screen_address:
@@ -302,17 +302,36 @@ wait_scanlines:
 
     wait_loop:
 
-        ; Wait for around 64us (64 cycles) per scanline.
+        ; Wait for around 32us (32 cycles) per scanline.
 
-        ldy #11             ; 2 c
+        ldy #5              ; 2 c
         delay0:
             dey             ; 2 c
             bne delay0      ; 3 c
 
-        nop                 ; 2 c
         dex                 ; 2 c
         bne wait_loop       ; 3 c
-                            ; (11 * 5) + 2 + 7 = 64
+                            ; (5 * 5) + 2 + 5 = 32
+    rts
+
+block_scanlines:
+
+    block_loop:
+
+        ; Wait for around 24us (24 cycles) per scanline and block by reading RAM.
+
+        ldy #4              ; 2 c
+        delay2:
+            dey             ; 2 c
+            bne delay2      ; 3 c
+
+        nop                 ; 2 c
+                            ; 24 c
+        
+        lda $70
+        dex                 ; 2 c
+        bne block_loop      ; 3 c
+
     rts
 
 show_message:
@@ -342,7 +361,7 @@ show_message:
     rts
 
 text:
-.byte 22,5, 23,1,0,0,0,0,0,0,0,0
+.byte 22,2, 23,1,0,0,0,0,0,0,0,0
 .byte 19,3,0,0,0,0
 .byte "+--------00--------+"
 .byte "1 | X X X X X X X X|"
@@ -353,27 +372,5 @@ text:
 .byte "6 |X X X       X X |"
 .byte "7 | X X X X X X X X|"
 .byte "8 |X X X X X X X X |"
-.byte "9 | X X X X X X X X|"
-.byte "a |X X X X X X X X |"
-.byte "b | X X X X X X X X|"
-.byte "c |X X X X X X X X |"
-.byte "d | X X X X X X X X|"
-.byte "e |X X X X X X X X |"
-.byte "f | X X X X X X X X|"
-.byte "10|X X X X X X X X |"
-.byte "11| X X X X X X X X|"
-.byte "12|X X X X X X X X |"
-.byte "13| X X X X X X X X|"
-.byte "14|X X X X X X X X |"
-.byte "15| X       X X X X|"
-.byte "16|X  Press    X X |"
-.byte "17| X   SPACE   X X|"
-.byte "18|X X    to     X |"
-.byte "19| X X     exit  X|"
-.byte "1a|X X X X       X |"
-.byte "1b| X X X X X X X X|"
-.byte "1c|X X X X X X X X |"
-.byte "1d| X X X X X X X X|"
-.byte "1e|X X X X X X X X |"
-.byte "+--------1f--------"
+.byte "+--------09--------+"
 text_end:

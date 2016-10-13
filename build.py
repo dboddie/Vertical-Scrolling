@@ -42,7 +42,8 @@ if __name__ == "__main__":
     files = []
     
     # Assemble the files.
-    assemble = [("vscroll-ram.oph", "VSCROLL"),
+    assemble = [("vscroll2-ram.oph", "VSCROLL2"),
+                ("vscroll-ram.oph", "VSCROLL"),
                 ("vscroll.oph", "vscroll.rom"),
                 ("vscroll1.oph", "vscroll1.rom")]
     

@@ -25,7 +25,7 @@
 .alias frame_delay $74
 .alias palette_lines $75
 
-.alias initial_frame_delay 1
+.alias initial_frame_delay 16
 .alias initial_scanlines 0
 .alias max_scanlines 40
 .alias max_palette_lines 32
@@ -34,6 +34,9 @@
 .alias screen_high $77
 
 .alias scroll_offset $78
+.alias row_counter $79
+.alias palette_offset $7a
+.alias palette_counter $7b
 
 .org $8000
 
@@ -234,11 +237,14 @@ show:
 
     ldx #0
     stx frame_counter
-    stx scroll_offset       ; Initialise the scroll offset.
+    lda #4                  ; Initialise the scroll offset.
+    sta scroll_offset
+    lda #0                  ; Initialise the row counter, used to determine the
+    sta row_counter         ; number of scanlines left before a palette change.
 
 main_loop:
 
-    lda #$18                ; MODE 3, no sound
+    lda #$18                ; MODE 3
     sta $fe07
     sta $282
 
@@ -256,29 +262,49 @@ main_loop:
     ldx text_lines
     jsr block_scanlines
 
-    lda #$08                ; MODE 1, no sound
+    lda #$08                ; MODE 1
     sta $fe07
     sta $282
 
     ldx palette_lines
-    cpx #0
     beq show_palette
 
     jsr block_scanlines
 
     show_palette:
 
-    lda scroll_offset
-    and #$01
-    tax
+    ldx scroll_offset       ; 3 c
+    stx palette_offset      ; 3 c
 
-    lda palette_fe08,x
-    sta $fe08
-    lda palette_fe09,x
-    sta $fe09
+    lda palette_fe08,x      ; 4 c
+    sta $fe08               ; 4 c
+    lda palette_fe09,x      ; 4 c
+    sta $fe09               ; 4 c
 
-    ldx #8
-    jsr block_scanlines
+    ldx row_counter         ; 3 c
+    beq skip_first_text_line
+    jsr block_scanlines     ; 6 c Show the remaining scanlines for the first
+                            ; text row.
+    skip_first_text_line:
+
+    lda #16
+    sta palette_counter
+
+    palette_loop:
+    
+        inc palette_offset      ; 5 c
+        ldx palette_offset      ; 4 c
+
+        lda palette_fe08,x      ; 4 c
+        sta $fe08               ; 4 c
+        lda palette_fe09,x      ; 4 c
+        sta $fe09               ; 4 c
+
+        ldx #8                  ; 2 c
+        jsr block_scanlines     ; 6 c
+
+        dec palette_counter     ; 5 c
+        bne palette_loop        ; 2 c
 
     lda #$ff
     sta $fe08
@@ -289,7 +315,21 @@ main_loop:
     lda #initial_frame_delay
     sta frame_delay
 
-    inc scroll_offset
+    clc
+    lda row_counter
+    adc #2
+    cmp #10
+    bcc same_row
+        lda scroll_offset
+        sbc #2
+        bpl scroll_offset_no_wrap
+            lda #31
+        scroll_offset_no_wrap:
+        sta scroll_offset
+
+        lda #2
+    same_row:
+    sta row_counter
 
     lda #121
     ldx #0
@@ -356,13 +396,13 @@ main_loop:
         sbc #$01
         sta screen_high
 
-    store_screen_address:
-    lda screen_low
-    sta $fe02
-    lda screen_high
-    sta $fe03
+        store_screen_address:
+        lda screen_low
+        sta $fe02
+        lda screen_high
+        sta $fe03
 
-    lda initial_scanlines
+        lda #initial_scanlines
 
     reset_vcounter:
     sta text_lines
@@ -557,8 +597,68 @@ text_end:
 
 palette_fe08:
 .byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
 .byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
+.byte [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2]]
 
 palette_fe09:
-.byte [$ff ^ [r1 | r2 | r3 | b3]]
-.byte [$ff ^ [r1 | r2 | b3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1 | r2 | r3]]

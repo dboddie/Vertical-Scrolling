@@ -310,7 +310,7 @@ main_loop:
 ;    jmp reset_vcounter
 ;
 ;    k4_pressed:
-    
+
     clc
     lda text_lines
     adc #10                 ; Increase the number of half scanlines to cover
@@ -340,13 +340,14 @@ main_loop:
         sbc #0
         sta screen_high
 
-    store_screen_address:
-    lda screen_low
-    sta $fe02
-    lda screen_high
-    sta $fe03
+        store_screen_address:
+        lda screen_low
+        sta $fe02
+        lda screen_high
+        sta $fe03
 
-    lda initial_scanlines
+        lda #initial_scanlines
+        jmp reset_vcounter
 
     reset_vcounter:
     sta text_lines
