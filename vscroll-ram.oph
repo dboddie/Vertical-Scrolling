@@ -21,7 +21,7 @@
 .alias second_field $71
 
 .alias frame_counter $72
-.alias text_lines $73
+.alias scanlines $73
 .alias frame_delay $74
 .alias palette_lines $75
 
@@ -47,7 +47,7 @@ show:
     sei
 
     lda #initial_scanlines  ; Number of MODE 6 scanlines to display
-    sta text_lines
+    sta scanlines
 
     lda #initial_frame_delay    ; Number of frames to show each displacement.
     sta frame_delay
@@ -123,7 +123,7 @@ main_loop:
     ldx frame_counter       ; 3 c
     lda fields,x            ; 4 c
     clc
-    adc text_lines
+    adc scanlines
     tax                     ; 2 c
 
     jsr wait_scanlines
@@ -185,52 +185,96 @@ main_loop:
 ;    jmp reset_vcounter
 ;
 ;    k4_pressed:
-    
+
+    jmp scroll_down
+
+    scroll_up:    
     clc
-    lda text_lines
+    lda scanlines
     adc #10                 ; Increase the number of half scanlines to cover
     cmp #max_scanlines      ; another MODE 6 character row.
     bcc reset_vcounter
 
         clc
-        lda screen_high
-        cmp #$2a
-        bne up_one_line
-        lda screen_low
+        lda screen_high     ; Check whether the screen start address is
+        cmp #$2a            ; three text lines above the normal top of a MODE 5
+        bne up_one_line     ; screen. (Subtracting again would show the normal
+        lda screen_low      ; top of the screen below the blanked area.)
         cmp #$20
         bne up_one_line
 
-            lda #$80
-            sta screen_low
-            lda #$3d
+            lda #$80            ; If so, set the address to be four text lines
+            sta screen_low      ; below the top of RAM at $8000 (shifted right
+            lda #$3d            ; by one place).
             sta screen_high
-            jmp store_screen_address
+            jmp store_screen_address1
 
         up_one_line:
         sec                     ; Update the screen start address.
         lda screen_low
-        sbc #$a0
+        sbc #$a0                ; Subtract a right-shifted text line length.
         sta screen_low
         lda screen_high
         sbc #0
         sta screen_high
 
-        store_screen_address:
+        store_screen_address1:
         lda screen_low
         sta $fe02
         lda screen_high
         sta $fe03
 
         lda #initial_scanlines
+        jmp reset_vcounter
+
+    scroll_down:
+    lda scanlines
+    cmp #initial_scanlines
+    bne decrease_vcounter
+
+        clc
+        lda screen_high
+        cmp #$3d
+        bne down_one_line
+        lda screen_low
+        cmp #$80
+        bne down_one_line
+
+            lda #$20
+            sta screen_low
+            lda #$2a
+            sta screen_high
+            jmp store_screen_address2
+
+        down_one_line:
+        clc                     ; Update the screen start address.
+        lda screen_low
+        adc #$a0
+        sta screen_low
+        lda screen_high
+        adc #0
+        sta screen_high
+
+        store_screen_address2:
+        lda screen_low
+        sta $fe02
+        lda screen_high
+        sta $fe03
+
+        lda #max_scanlines
+
+        decrease_vcounter:
+        sec                     ; Decrease the number of half scanlines to reveal
+        sbc #10                 ; another MODE 6 character row.
 
     reset_vcounter:
-    sta text_lines
+    sta scanlines
 
     calculate_remaining_lines:
 
     lda #max_palette_lines
     sec
-    sbc text_lines
+    sbc scanlines
     sta palette_lines
     clc
 
