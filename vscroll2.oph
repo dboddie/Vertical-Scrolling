@@ -60,7 +60,7 @@ copyright_offset:
 .byte "1.0", 0
 
 copyright_string:
-.byte "(C) 2015 David Boddie", 0
+.byte "(C) 2017 David Boddie", 0
 
 ; Second processor relocation address
 .byte 0, $80, 0, 0
@@ -249,6 +249,12 @@ main_loop:
     lda #$ff                ; Blank the palette.
     sta $fe08
     sta $fe09
+    sta $fe0a
+    sta $fe0b
+    sta $fe0c
+    sta $fe0d
+    sta $fe0e
+    sta $fe0f
 
     start:
 
@@ -260,7 +266,7 @@ main_loop:
     ldx text_lines
     jsr block_scanlines
 
-    lda #$08                ; MODE 1
+    lda #$10                ; MODE 2
     sta $fe07
     sta $282
 
@@ -272,10 +278,13 @@ main_loop:
 
     show_palette:
 
-    lda palette_fe08        ; 4 c
-    sta $fe08               ; 4 c
-    lda palette_fe09        ; 4 c
-    sta $fe09               ; 4 c
+    ldx #7
+    
+    show_palette_loop:
+        lda palette_fe08,x      ; 4 c
+        sta $fe08,x             ; 4 c
+        dex                     ; 2 c
+        bpl show_palette_loop   ; 2 c
 
     dec frame_delay
     bne next_frame
@@ -494,60 +503,118 @@ show_message:
     rts
 
 text:
-.byte 22,1, 23,1,0,0,0,0,0,0,0,0
-.byte 31,0,0
-.byte "+------------------00------------------+"
-.byte "1 | X X X X X X X X X X X X X X X X X X|"
-.byte "2 |X X X X X X X           X X X X X X |"
-.byte "3 | X X X X X X  Vertical X X X X X X X|"
-.byte "4 |X X X X X X  scrolling  X X X X X X |"
-.byte "5 | X X X X X X    demo   X X X X X X X|"
-.byte "6 |X X X X X X X X       X X X X X X X |"
-.byte "7 | X X X X X X X X X X X X X X X X X X|"
-.byte "8 |X X X X X X X X X X X X X X X X X X |"
-.byte "9 | X X X X X X X X X X X X X X X X X X|"
-.byte "a |X X X X X X X X X X X X X X X X X X |"
-.byte "b | X X X X X X X X X X X X X X X X X X|"
-.byte "c |X X X X X X X X X X X X X X X X X X |"
-.byte "d | X X X X X X X X X X X X X X X X X X|"
-.byte "e |X X X X X X X X X X X X X X X X X X |"
-.byte "f | X X X X X X X X X X X X X X X X X X|"
-.byte "10|X X X X X X X X X X X X X X X X X X |"
-.byte "11| X X X X X X X X X X X X X X X X X X|"
-.byte "12|X X X X X X X X X X X X X X X X X X |"
-.byte "13| X X X X X X X X X X X X X X X X X X|"
-.byte "14|X X X X X X X X X X X X X X X X X X |"
-.byte "15| X X X X X X       X X X X X X X X X|"
-.byte "16|X X X X X X  Press    X X X X X X X |"
-.byte "17| X X X X X X   SPACE   X X X X X X X|"
-.byte "18|X X X X X X X    to     X X X X X X |"
-.byte "19| X X X X X X X     exit  X X X X X X|"
-.byte "1a|X X X X X X X X X       X X X X X X |"
-.byte "1b| X X X X X X X X X X X X X X X X X X|"
-.byte "1c|X X X X X X X X X X X X X X X X X X |"
-.byte "1d| X X X X X X X X X X X X X X X X X X|"
-.byte "1e|X X X X X X X X X X X X X X X X X X |"
-.byte "+------------------1f------------------"
+.byte 22,2, 23,1,0,0,0,0,0,0,0,0
+.byte 17,7, "+--------00--------+"
+.byte 17,7, "1 |", 17,1, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "2 |", 17,2, "X X           X ", 17,7, "|"
+.byte 17,7, "3 |", 17,3, " X  Vertical X X", 17,7, "|"
+.byte 17,7, "4 |", 17,4, "X  scrolling  X ", 17,7, "|"
+.byte 17,7, "5 |", 17,5, " X    demo   X X", 17,7, "|"
+.byte 17,7, "6 |", 17,6, "X X X       X X ", 17,7, "|"
+.byte 17,7, "7 |", 17,7, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "8 |", 17,6, "X X X X X X X X ", 17,7, "|"
+.byte 17,7, "9 |", 17,5, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "a |", 17,4, "X X X X X X X X ", 17,7, "|"
+.byte 17,7, "b |", 17,3, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "c |", 17,2, "X X X X X X X X ", 17,7, "|"
+.byte 17,7, "d |", 17,1, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "e |", 17,2, "X X X X X X X X ", 17,7, "|"
+.byte 17,7, "f |", 17,3, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "10|", 17,4, "X X X X X X X X ", 17,7, "|"
+.byte 17,7, "11|", 17,5, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "12|", 17,6, "X X X X X X X X ", 17,7, "|"
+.byte 17,7, "13|", 17,7, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "14|", 17,6, "X X X X X X X X ", 17,7, "|"
+.byte 17,7, "15|", 17,5, " X       X X X X", 17,7, "|"
+.byte 17,7, "16|", 17,4, "X  Press    X X ", 17,7, "|"
+.byte 17,7, "17|", 17,3, " X   SPACE   X X", 17,7, "|"
+.byte 17,7, "18|", 17,2, "X X    to     X ", 17,7, "|"
+.byte 17,7, "19|", 17,1, " X X     exit  X", 17,7, "|"
+.byte 17,7, "1a|", 17,2, "X X X X       X ", 17,7, "|"
+.byte 17,7, "1b|", 17,3, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "1c|", 17,4, "X X X X X X X X ", 17,7, "|"
+.byte 17,7, "1d|", 17,5, " X X X X X X X X", 17,7, "|"
+.byte 17,7, "1e|", 17,6, "X X X X X X X X ", 17,7, "|"
+.byte "+--------1f--------"
 text_end:
 
 ; fe08 values
-.alias g2 $04
-.alias g3 $08
+.alias b10 $80
+.alias b8 $40
+.alias b2 $20
 .alias b0 $10
-.alias b1 $20
-.alias b2 $40
-.alias b3 $80
+.alias g10 $08
+.alias g8 $04
 
 ; fe09 values
-.alias r0 $01
-.alias r1 $02
-.alias r2 $04
-.alias r3 $08
+.alias g2 $20
 .alias g0 $10
-.alias g1 $20
+.alias r10 $08
+.alias r8 $04
+.alias r2 $02
+.alias r0 $01
+
+; fe0a values
+.alias b14 $80
+.alias b12 $40
+.alias b6 $20
+.alias b4 $10
+.alias g14 $08
+.alias g12 $04
+
+; fe0b values
+.alias g6 $20
+.alias g4 $10
+.alias r14 $08
+.alias r12 $04
+.alias r6 $02
+.alias r4 $01
+
+; fe0c values
+.alias b15 $80
+.alias b13 $40
+.alias b7 $20
+.alias b5 $10
+.alias g15 $08
+.alias g13 $04
+
+; fe0d values
+.alias g7 $20
+.alias g5 $10
+.alias r15 $08
+.alias r13 $04
+.alias r7 $02
+.alias r5 $01
+
+; fe0e values
+.alias b11 $80
+.alias b9 $40
+.alias b3 $20
+.alias b1 $10
+.alias g11 $08
+.alias g9 $04
+
+; fe0f values
+.alias g3 $20
+.alias g1 $10
+.alias r11 $08
+.alias r9 $04
+.alias r3 $02
+.alias r1 $01
 
 palette_fe08:
-.byte [$ff ^ [g2 | g3 | b3]]
-
+.byte [$ff]
 palette_fe09:
-.byte [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [g2]]
+palette_fe0a:
+.byte [$ff ^ [b6 | b4]]
+palette_fe0b:
+.byte [$ff ^ [g6]]
+palette_fe0c:
+.byte [$ff ^ [b7 | b5]]
+palette_fe0d:
+.byte [$ff ^ [g7 | r7 | r5]]
+palette_fe0e:
+.byte [$ff]
+palette_fe0f:
+.byte [$ff ^ [g3 | r3 | r1]]
