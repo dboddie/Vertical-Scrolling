@@ -25,7 +25,7 @@
 .alias frame_delay $74
 .alias palette_lines $75
 
-.alias initial_frame_delay 16
+.alias initial_frame_delay 2
 .alias initial_scanlines 1
 .alias max_scanlines 40
 .alias max_palette_lines 32
@@ -237,7 +237,7 @@ show:
 
     ldx #0
     stx frame_counter
-    lda #0                  ; Initialise the scroll offset.
+    lda #36                 ; Initialise the scroll offset.
     sta scroll_offset
 
 main_loop:
@@ -273,24 +273,28 @@ main_loop:
     show_palette:
 
     ldx scroll_offset           ; 3 c
-    stx palette_offset          ; 3 c
 
-    lda #64
+    lda #200
     sta palette_counter
 
     palette_loop:
     
-        ldx palette_offset      ; 4 c
-
         lda palette_fe08,x      ; 4 c
         sta $fe08               ; 4 c
         lda palette_fe09,x      ; 4 c
         sta $fe09               ; 4 c
 
-        ldx #1                  ; 2 c
-        jsr block_scanlines     ; 6 c
+        ; Wait for around 24us (48 cycles) per scanline and block by reading RAM.
 
-        inc palette_offset      ; 5 c
+        ldy #9                      ; 2 c
+        palette_loop_delay:
+            dey                     ; 2 c
+            bne palette_loop_delay  ; 3 c
+
+        nop                         ; 2 c
+                                    ; 47 c
+
+        inx                     ; 2 c
 
         dec palette_counter     ; 5 c
         bne palette_loop        ; 2 c
@@ -343,7 +347,7 @@ main_loop:
     ; Scroll up by two scanlines.
     sec
     lda scroll_offset
-    ;sbc #2
+    sbc #2
     sta scroll_offset
 
     clc
@@ -493,7 +497,7 @@ block_scanlines:
         dex                 ; 2 c
         bne block_loop      ; 3 c
 
-    rts
+    rts                     ; 6 c
 
 show_message:
 
@@ -575,7 +579,7 @@ text_end:
 .alias g1 $20
 
 palette_fe08:
-.byte [$ff ^ [g2 | g3 | b1 | b3]], [$ff ^ [g2 | g3 | b1 | b3]]
+.byte [$ff ^ [g2 | g3 | b0 | b1]], [$ff ^ [g2 | g3 | b1 | b3]]
 .byte [$ff ^ [g2 | g3 | b1 | b3]], [$ff ^ [g2 | g3 | b3]]
 .byte [$ff ^ [g2 | g3 | b3]], [$ff ^ [g2 | g3 | b3]]
 .byte [$ff ^ [g2 | g3 | b3]], [$ff ^ [g2 | g3 | b3]]
@@ -720,7 +724,7 @@ palette_fe08:
 .byte [$ff ^ [g2 | b3]], [$ff ^ [g2 | b3]]
 
 palette_fe09:
-.byte [$ff ^ [r1]], [$ff ^ [r1]]
+.byte [$ff ^ [r0 | r1 | g0]], [$ff ^ [r1]]
 .byte [$ff ^ [r1]], [$ff ^ [r1 | r2 | r3]]
 .byte [$ff ^ [r1 | r2 | r3]], [$ff ^ [r1 | r2 | r3]]
 .byte [$ff ^ [r1 | r2 | r3]], [$ff ^ [r1 | r2 | r3]]
