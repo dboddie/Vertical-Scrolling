@@ -347,7 +347,6 @@ main_loop:
         sta $fe03
 
         lda #initial_scanlines
-        jmp reset_vcounter
 
     reset_vcounter:
     sta text_lines
