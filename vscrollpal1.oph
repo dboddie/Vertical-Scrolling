@@ -29,6 +29,7 @@
 .alias initial_scanlines 1
 .alias max_scanlines 40
 .alias max_palette_lines 32
+.alias initial_scroll_offset 35
 
 .alias screen_low $76
 .alias screen_high $77
@@ -237,7 +238,7 @@ show:
 
     ldx #0
     stx frame_counter
-    lda #36                 ; Initialise the scroll offset.
+    lda #initial_scroll_offset  ; Initialise the scroll offset.
     sta scroll_offset
 
 main_loop:
@@ -274,8 +275,8 @@ main_loop:
 
     ldx scroll_offset           ; 3 c
 
-    lda #200
-    sta palette_counter
+    lda #200                    ; Only perform palette optimisation for 200
+    sta palette_counter         ; scanlines. We need time to do other things.
 
     palette_loop:
     
@@ -286,15 +287,17 @@ main_loop:
 
         ; Wait for around 24us (48 cycles) per scanline and block by reading RAM.
 
-        ldy #9                      ; 2 c
-        palette_loop_delay:
+        ldy #8                      ; 2 c
+        palette_loop_delay1:
             dey                     ; 2 c
-            bne palette_loop_delay  ; 3 c
+            bne palette_loop_delay1 ; 3 c
 
-        nop                         ; 2 c
-                                    ; 47 c
+                                    ; 42 c
 
         inx                     ; 2 c
+
+        nop
+        nop
 
         dec palette_counter     ; 5 c
         bne palette_loop        ; 2 c
@@ -485,15 +488,14 @@ block_scanlines:
 
         ; Wait for around 24us (48 cycles) per scanline and block by reading RAM.
 
-        ldy #9              ; 2 c
+        ldy #8              ; 2 c
         delay2:
             dey             ; 2 c
             bne delay2      ; 3 c
 
-        nop                 ; 2 c
-                            ; 49 c
+                            ; 42 c
         
-        lda $70
+        lda $70             ; 3 c
         dex                 ; 2 c
         bne block_loop      ; 3 c
 
@@ -528,7 +530,7 @@ show_message:
 text:
 .byte 22,1, 23,1,0,0,0,0,0,0,0,0
 .byte 31,0,0
-.byte 17,3, "+------------------00------------------+"
+.byte 17,3, "X------------------00------------------X"
 .byte       "1 |", 17,1, " X X X X X X X X X X X X X X X X X X", 17,3, "|"
 .byte       "2 |", 17,1, "X X X X X X X           X X X X X X ", 17,3, "|"
 .byte       "3 |", 17,1, " X X X X X X  ", 17,2, "Vertical", 17,1, " X X X X X X X", 17,3, "|"
@@ -579,10 +581,10 @@ text_end:
 .alias g1 $20
 
 palette_fe08:
-.byte [$ff ^ [g2 | g3 | b0 | b1]], [$ff ^ [g2 | g3 | b1 | b3]]
-.byte [$ff ^ [g2 | g3 | b1 | b3]], [$ff ^ [g2 | g3 | b3]]
-.byte [$ff ^ [g2 | g3 | b3]], [$ff ^ [g2 | g3 | b3]]
-.byte [$ff ^ [g2 | g3 | b3]], [$ff ^ [g2 | g3 | b3]]
+.byte [$ff ^ [g2 | g3 | b1 | b3]], [$ff ^ [g2 | b1]]
+.byte [$ff ^ [g2 | g3 | b1 | b3]], [$ff ^ [g2 | g3 | b1 | b3]]
+.byte [$ff ^ [g2 | g3 | b1 | b3]], [$ff ^ [g2 | g3 | b1 | b3]]
+.byte [$ff ^ [g2 | g3 | b1 | b3]], [$ff ^ [g2 | g3 | b1 | b3]]
 .byte [$ff ^ [g2 | g3 | b3]], [$ff ^ [g2 | g3 | b3]]
 .byte [$ff ^ [g2 | g3 | b3]], [$ff ^ [g2 | g3 | b3]]
 .byte [$ff ^ [g2 | g3 | b3]], [$ff ^ [g2 | g3 | b3]]
@@ -724,10 +726,10 @@ palette_fe08:
 .byte [$ff ^ [g2 | b3]], [$ff ^ [g2 | b3]]
 
 palette_fe09:
-.byte [$ff ^ [r0 | r1 | g0]], [$ff ^ [r1]]
+.byte [$ff ^ [r0 | r1 | r3]], [$ff ^ [r1 | r3]]
 .byte [$ff ^ [r1]], [$ff ^ [r1 | r2 | r3]]
-.byte [$ff ^ [r1 | r2 | r3]], [$ff ^ [r1 | r2 | r3]]
-.byte [$ff ^ [r1 | r2 | r3]], [$ff ^ [r1 | r2 | r3]]
+.byte [$ff ^ [r1]], [$ff ^ [r1]]
+.byte [$ff ^ [r1]], [$ff ^ [r0 | r1]]
 .byte [$ff ^ [r1 | r2 | r3]], [$ff ^ [r1 | r2 | r3]]
 .byte [$ff ^ [r1 | r2 | r3]], [$ff ^ [r1 | r2 | r3]]
 .byte [$ff ^ [r1 | r2 | r3]], [$ff ^ [r1 | r2 | r3]]
