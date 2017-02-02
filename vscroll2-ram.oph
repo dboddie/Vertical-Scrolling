@@ -13,8 +13,8 @@
 ; You should have received a copy of the GNU General Public License
 ; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-.alias long_field 107
-.alias short_field 106
+.alias long_field 108
+.alias short_field 107
 
 .alias fields $70
 .alias first_field $70
@@ -46,7 +46,7 @@ show:
 
     sei
 
-    lda #initial_scanlines  ; Number of MODE 6 scanlines to display
+    lda #initial_scanlines  ; Number of MODE 3 scanlines to display
     sta text_lines
 
     lda #initial_frame_delay    ; Number of frames to show each displacement.
@@ -189,7 +189,7 @@ main_loop:
     clc
     lda text_lines
     adc #10                 ; Increase the number of half scanlines to cover
-    cmp #max_scanlines      ; another MODE 6 character row.
+    cmp #max_scanlines      ; another MODE 3 character row.
     bcc reset_vcounter
 
         clc
