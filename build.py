@@ -46,6 +46,7 @@ if __name__ == "__main__":
                 ("vscroll-ram.oph", "VSCROLL"),
                 ("vscroll.oph", "vscroll.rom"),
                 ("vscroll1.oph", "vscroll1.rom"),
+                ("vscrollpal1.oph", "vscrollpal1.rom"),
                 ("vscroll2.oph", "vscroll2.rom")]
     
     code_data = {}
