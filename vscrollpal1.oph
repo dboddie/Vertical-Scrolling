@@ -241,15 +241,15 @@ show:
     lda #initial_scroll_offset  ; Initialise the scroll offset.
     sta scroll_offset
 
+    lda #$ff                ; Blank the palette.
+    sta $fe08
+    sta $fe09
+
 main_loop:
 
     lda #$18                ; MODE 3
     sta $fe07
     sta $282
-
-    lda #$ff                ; Blank the palette.
-    sta $fe08
-    sta $fe09
 
     start:
 
@@ -287,18 +287,16 @@ main_loop:
 
         ; Wait for around 24us (48 cycles) per scanline and block by reading RAM.
 
-        ldy #8                      ; 2 c
+        ldy #9                      ; 2 c
         palette_loop_delay1:
             dey                     ; 2 c
             bne palette_loop_delay1 ; 3 c
 
-                                    ; 42 c
+                                    ; 47 c
 
         inx                     ; 2 c
 
         nop
-        nop
-
         dec palette_counter     ; 5 c
         bne palette_loop        ; 2 c
 
