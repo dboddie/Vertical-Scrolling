@@ -25,7 +25,7 @@
 .alias frame_delay $74
 .alias palette_lines $75
 
-.alias initial_frame_delay 2
+.alias initial_frame_delay_value 2
 .alias initial_scanlines 1
 .alias max_scanlines 41
 .alias max_palette_lines_value 128
@@ -44,12 +44,18 @@
 .alias visible_palette_lines $7a
 .alias palette_counter $7b
 .alias palette_offset $7c
+.alias initial_frame_delay $7d
+.alias animation_index $7e
+.alias animation_value0 $84
+.alias animation_value1 $85
 
 .alias title_dest_address $3000
 .alias title_dest_end $5800
 
-.alias title_palette_start 196
-.alias title_palette_finish 240
+.alias title_palette_start [128 + 68]
+.alias title_palette_finish [128 + 68 + 40]
+.alias palette_fe08 $2000
+.alias palette_fe09 $2100
 
 .org $8000
 
@@ -192,7 +198,8 @@ show:
     lda #initial_scanlines      ; Number of MODE 3 scanlines to display
     sta text_lines
 
-    lda #initial_frame_delay    ; Number of frames to show each displacement.
+    lda #initial_frame_delay_value
+    sta initial_frame_delay     ; Number of frames to show each displacement.
     sta frame_delay
 
     lda #max_palette_lines_value
@@ -201,6 +208,14 @@ show:
 
     lda #visible_palette_lines_value
     sta visible_palette_lines
+
+    lda #title_palette_start
+    sta animation_index
+    tax
+    lda palette_fe08,x
+    sta animation_value0
+    lda palette_fe09,x
+    sta animation_value1
 
     ; Clear the vsync interrupt bit.
 
@@ -294,19 +309,19 @@ main_loop:
 
     palette_loop:
     
-        lda palette_fe08,x      ; 4 c
-        sta $fe08               ; 4 c
-        lda palette_fe09,x      ; 4 c
-        sta $fe09               ; 4 c
-
         ; Wait for around 24us (48 cycles) per scanline and block by reading RAM.
 
-        ldy #9                      ; 2 c
+        ldy #8                      ; 2 c
         palette_loop_delay1:
             dey                     ; 2 c
             bne palette_loop_delay1 ; 3 c
 
-                                    ; 47 c
+                                    ; 42 c
+
+        lda palette_fe08,x      ; 4 c
+        sta $fe08               ; 4 c
+        lda palette_fe09,x      ; 4 c
+        sta $fe09               ; 4 c
 
         inx                     ; 2 c
 
@@ -320,14 +335,17 @@ main_loop:
 
     dec frame_delay                 ; Only update every few frames, depending
     bne next_frame                  ; on the frame delay constant.
-    lda #initial_frame_delay
+    lda initial_frame_delay
     sta frame_delay
 
     lda scroll_offset               ; Check whether the scrolling has finished.
     cmp #end_scroll_offset
     bcc scroll_down
 
-    jmp check_keys  ; If scrolling has finished then check the keys as usual.
+    lda #1
+    sta initial_frame_delay
+    jsr animate_title               ; If scrolling has finished then animate
+    jmp check_keys                  ; the title and check the keys as usual.
 
     scroll_down:
     clc
@@ -561,7 +579,54 @@ show_message:
         cmp #>title_dest_end
         bne copy_title_loop
 
+    ldx #0
+
+    copy_palette_loop:
+
+        lda original_palette_fe08,x
+        sta palette_fe08,x
+        lda original_palette_fe09,x
+        sta palette_fe09,x
+        inx
+        bne copy_palette_loop
+
     clc
+    rts
+
+animate_title:
+
+    ldx animation_index
+
+    ldy #10
+    animation_title_loop:
+
+    inx
+    cpx #title_palette_finish
+    bne animate_title_next
+
+    ldx #title_palette_start
+
+    animate_title_next:
+
+    lda palette_fe08,x
+    sta $80
+    lda palette_fe09,x
+    sta $81
+
+    lda animation_value0
+    sta palette_fe08,x
+    lda animation_value1
+    sta palette_fe09,x
+
+    lda $80
+    sta animation_value0
+    lda $81
+    sta animation_value1
+
+    dey
+    bne animation_title_loop
+
+    stx animation_index
     rts
 
 text:
@@ -585,10 +650,10 @@ text_end:
 .alias g0 $10
 .alias g1 $20
 
-palette_fe08:
+original_palette_fe08:
 .include "data/fe08.dat"
 
-palette_fe09:
+original_palette_fe09:
 .include "data/fe09.dat"
 
 title_data:
