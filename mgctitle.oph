@@ -1,0 +1,594 @@
+; Copyright (C) 2016 David Boddie <david@boddie.org.uk>
+;
+; This program is free software: you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version.
+;
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+.alias long_field 60
+.alias short_field 59
+
+.alias fields $70
+.alias first_field $70
+.alias second_field $71
+
+.alias frame_counter $72
+.alias text_lines $73
+.alias frame_delay $74
+.alias palette_lines $75
+
+.alias initial_frame_delay 2
+.alias initial_scanlines 1
+.alias max_scanlines 41
+.alias max_palette_lines_value 128
+.alias max_palette_lines_min 40
+.alias visible_palette_lines_value 100
+.alias visible_palette_lines_max 188
+.alias initial_scroll_offset 0
+.alias initial_palette_offset 2
+.alias end_scroll_offset 200
+
+.alias screen_low $76
+.alias screen_high $77
+
+.alias scroll_offset $78
+.alias max_palette_lines $79
+.alias visible_palette_lines $7a
+.alias palette_counter $7b
+.alias palette_offset $7c
+
+.alias title_dest_address $3000
+.alias title_dest_end $5800
+
+.alias title_palette_start 196
+.alias title_palette_finish 240
+
+.org $8000
+
+rom_start:
+.byte 0, 0, 0
+jmp service_entry
+
+; ROM type
+.byte $82       ; 6502 code (2), language ($40), service ($80)
+
+copyright_offset:
+.byte [copyright_string - rom_start - 1]
+
+; Version
+.byte 1
+
+; Title string
+.byte "Vertical scrolling test", 0
+
+; Version string
+.byte "1.0", 0
+
+copyright_string:
+.byte "(C) 2017 David Boddie", 0
+
+; Second processor relocation address
+.byte 0, $80, 0, 0
+
+service_entry:
+
+    cmp #4
+    bne service_entry_not_4
+    jmp service_command
+
+    service_entry_not_4:
+    cmp #9
+    beq service_help
+
+    service_entry_exit:
+    clc
+    rts
+
+show_name: .byte "SCROLL", 13
+show_name_end:
+
+help_text:
+.byte "Type *SCROLL to see a scrolling demo.", 13
+help_text_end:
+
+service_help:
+
+    pha
+    tya
+    pha
+    txa
+    pha
+
+    lda ($f2),y
+    cmp #13
+    bne service_help_compare
+
+    ldx #0
+    service_help_loop0:
+        lda show_name,x
+        jsr $ffee
+        inx
+        cpx #[show_name_end - show_name]
+        bne service_help_loop0
+
+    beq service_command_claimed
+
+    service_help_compare:
+
+    ldx #0
+    service_help_loop1:
+        lda ($f2),y
+        cmp show_name,x
+        bne service_command_not_found
+        iny
+        inx
+        cmp #13
+        bne service_help_loop1
+
+    ldx #0
+    service_help_loop2:
+        lda help_text,x
+        jsr $ffee
+        inx
+        cpx #[help_text_end - help_text]
+        bne service_help_loop2
+
+service_command_claimed:
+
+    pla                         ; pop Y and X registers off the stack
+    tax
+    pla
+    tay
+    pla
+    lda #0                      ; claim service command
+    rts
+
+service_command_not_found:
+    pla                         ; pop Y and X registers off the stack
+    tax
+    pla
+    tay
+    pla
+    rts
+
+service_command:
+
+    pha
+    tya                         ; push Y and X registers onto the stack
+    pha
+    txa
+    pha
+
+    ldx #0
+    service_command_loop:
+
+        lda ($f2),y
+        cmp show_name,x
+        bne service_command_not_found
+        iny
+        inx
+        cmp #13
+        bne service_command_loop
+
+show:
+
+    jsr show_message
+
+    lda #$00
+    sta screen_low
+    lda #$18
+    sta screen_high
+
+    sei
+
+    lda #initial_scanlines      ; Number of MODE 3 scanlines to display
+    sta text_lines
+
+    lda #initial_frame_delay    ; Number of frames to show each displacement.
+    sta frame_delay
+
+    lda #max_palette_lines_value
+    sta max_palette_lines
+    sta palette_lines
+
+    lda #visible_palette_lines_value
+    sta visible_palette_lines
+
+    ; Clear the vsync interrupt bit.
+
+    lda #$10
+    sta $fe05
+
+    ; Wait until the vsync bit is cleared.
+
+    lda #$04
+    wait0:
+    bit $fe00
+    bne wait0
+
+    ; Wait until the vsync bit is set, indicating the start of a new frame.
+
+    wait1:
+    bit $fe00
+    beq wait1
+
+    lda #$10
+    sta $fe05
+
+    calibration:
+
+        jsr calibrate
+        stx $70
+    
+        jsr calibrate
+        stx $71
+
+        lda $70
+        cmp $71
+        beq calibration
+
+    bcs highest_first
+
+    lda #short_field        ; The first value is the lowest, so store a
+    sta first_field         ; slightly lower value than the second value in
+    lda #long_field         ; the first slot.
+    sta second_field
+    bcc pre_loop
+
+    highest_first:
+
+    lda #long_field         ; The first value is the highest, so store a
+    sta first_field         ; slightly lower value in the second slot.
+    lda #short_field
+    sta second_field
+
+    pre_loop:
+
+    ldx #0
+    stx frame_counter
+    lda #initial_scroll_offset  ; Initialise the scroll offset.
+    sta scroll_offset
+    lda #initial_palette_offset ; Initialise the palette offset.
+    sta palette_offset
+
+main_loop:
+
+    lda #$18                ; MODE 3
+    sta $fe07
+    sta $282
+
+    start:
+
+    ldx frame_counter       ; 3 c
+    lda fields,x            ; 4 c
+    tax
+    jsr wait_scanlines
+
+    ldx text_lines
+    jsr block_scanlines
+
+    lda #$08                ; MODE 1
+    sta $fe07
+    sta $282
+
+    ldx palette_lines
+    cpx #0
+    beq show_palette
+
+    jsr block_scanlines
+
+    show_palette:
+
+    ldx palette_offset           ; 3 c
+
+    lda visible_palette_lines   ; Only perform palette optimisation for some
+    sta palette_counter         ; scanlines. We need time to do other things.
+
+    palette_loop:
+    
+        lda palette_fe08,x      ; 4 c
+        sta $fe08               ; 4 c
+        lda palette_fe09,x      ; 4 c
+        sta $fe09               ; 4 c
+
+        ; Wait for around 24us (48 cycles) per scanline and block by reading RAM.
+
+        ldy #9                      ; 2 c
+        palette_loop_delay1:
+            dey                     ; 2 c
+            bne palette_loop_delay1 ; 3 c
+
+                                    ; 47 c
+
+        inx                     ; 2 c
+
+        nop
+        dec palette_counter     ; 5 c
+        bne palette_loop        ; 2 c
+
+    lda #$ff
+    sta $fe08
+    sta $fe09
+
+    dec frame_delay                 ; Only update every few frames, depending
+    bne next_frame                  ; on the frame delay constant.
+    lda #initial_frame_delay
+    sta frame_delay
+
+    lda scroll_offset               ; Check whether the scrolling has finished.
+    cmp #end_scroll_offset
+    bcc scroll_down
+
+    jmp check_keys  ; If scrolling has finished then check the keys as usual.
+
+    scroll_down:
+    clc
+    adc #2                          ; Scroll down by two scanlines.
+    sta scroll_offset
+
+    lda text_lines
+    cmp #initial_scanlines
+    bne decrease_vcounter
+
+        clc
+        lda screen_high
+        cmp #$3b
+        bne down_one_line
+        lda screen_low
+        cmp #$00
+        bne down_one_line
+
+            lda #$40
+            sta screen_low
+            lda #$14
+            sta screen_high
+            jmp store_screen_address
+
+        down_one_line:
+        clc                     ; Update the screen start address.
+        lda screen_low
+        adc #$40
+        sta screen_low
+        lda screen_high
+        adc #$01
+        sta screen_high
+
+        store_screen_address:
+        lda screen_low
+        sta $fe02
+        lda screen_high
+        sta $fe03
+
+        lda #max_scanlines
+
+        decrease_vcounter:
+        sec                 ; Decrease the number of half scanlines to reveal
+        sbc #10             ; another MODE 3 character row.
+
+    reset_vcounter:
+    sta text_lines
+
+    calculate_remaining_lines:
+
+    lda max_palette_lines           ; Normally the number of lines to blank
+    cmp #max_palette_lines_min      ; would be fixed, but we start with a
+    beq calculate_remaining_lines2  ; higher than required value to hide the
+    sec                             ; MGC title image.
+    sbc #2
+    sta max_palette_lines
+
+    calculate_remaining_lines2:
+    sec                             ; Subtract the number of palette lines
+    sbc text_lines                  ; to blank after the MODE 3 -> 1 change.
+    sta palette_lines
+    clc
+
+    lda visible_palette_lines
+    cmp #visible_palette_lines_max
+    bne add_visible_lines
+
+    inc palette_offset  ; Only increase the palette offset once the full
+    inc palette_offset  ; scrolling area is visible. This is designed to
+    jmp check_keys      ; occur when the top of the visible area has stopped
+                        ; moving.
+    add_visible_lines:
+    adc #2
+    sta visible_palette_lines
+
+    check_keys:
+
+    lda #121
+    ldx #0
+    jsr $fff4
+
+    cpx #$ff
+    bne end_loop
+
+    next_frame:
+
+    ; Wait for the vsync bit to be set.
+
+    lda #$04                ; 2 c
+    wait2:
+    bit $fe00               ; 4 c
+    beq wait2               ; 3 c
+
+    lda #$10                ; 2 c
+    sta $fe05               ; 4 c
+
+    lda frame_counter       ; 3 c
+    eor #1                  ; 2 c
+    sta frame_counter       ; 3 c
+
+    jmp main_loop
+
+end_loop:
+
+    cli
+
+    ; Exit to MODE 6.
+    lda #22
+    jsr $ffee
+    lda #6
+    jsr $ffee
+
+    lda #15
+    ldx #1
+    jsr $fff4
+
+    jmp service_command_claimed
+
+calibrate:
+
+    ; Count the number of half scanlines to the end of the display. This will
+    ; wrap around in an 8-bit value.
+
+    lda #$04                ; 2 c
+    ldx #0                  ; 2 c
+    calibration_loop:
+
+        ldy #11             ; 2 c
+        delay1:
+            dey             ; 2 c
+            bne delay1      ; 3 c
+
+        inx                 ; 2 c
+
+        ; Continue until the vsync interrupt bit is set again.
+
+        bit $fe00           ; 4 c
+        beq calibration_loop; 3 c
+                            ; (11 * 5) + 2 + 9 = 66
+
+    ; Clear the vsync interrupt bit.
+
+    lda #$10
+    sta $fe05
+
+    rts
+
+wait_scanlines:
+
+    wait_loop:
+
+        ; Wait for around 64us (128 cycles) per scanline.
+
+        ldy #23             ; 2 c
+        delay0:
+            dey             ; 2 c
+            bne delay0      ; 3 c
+
+        nop                 ; 2 c
+        dex                 ; 2 c
+        bne wait_loop       ; 3 c
+                            ; (23 * 5) + 2 + 7 = 124
+    rts
+
+block_scanlines:
+
+    block_loop:
+
+        ; Wait for around 24us (48 cycles) per scanline and block by reading RAM.
+
+        ldy #8              ; 2 c
+        delay2:
+            dey             ; 2 c
+            bne delay2      ; 3 c
+
+                            ; 42 c
+        
+        lda $70             ; 3 c
+        dex                 ; 2 c
+        bne block_loop      ; 3 c
+
+    rts                     ; 6 c
+
+show_message:
+
+    ldx #0
+
+    print_loop:
+        lda text,x
+        jsr $ffee
+        inx
+
+        cpx #[text_end - text]
+        bne print_loop
+
+    lda #$ff                ; Blank the palette.
+    sta $fe08
+    sta $fe09
+
+    lda #<title_data
+    sta $80
+    lda #>title_data
+    sta $81
+
+    lda #<title_dest_address
+    sta $82
+    lda #>title_dest_address
+    sta $83
+
+    ldy #0
+
+    copy_title_loop:
+
+        lda ($80),y
+        sta ($82),y
+
+        inc $80
+        bne copy_title_loop_next1
+        inc $81
+
+        copy_title_loop_next1:
+        inc $82
+        bne copy_title_loop_next2
+        inc $83
+
+        copy_title_loop_next2:
+        lda $82
+        cmp #<title_dest_end
+        bne copy_title_loop
+        lda $83
+        cmp #>title_dest_end
+        bne copy_title_loop
+
+    clc
+    rts
+
+text:
+.byte 22,1, 23,1,0,0,0,0,0,0,0,0
+.byte 31,8,20
+text_end:
+
+; fe08 values
+.alias g2 $04
+.alias g3 $08
+.alias b0 $10
+.alias b1 $20
+.alias b2 $40
+.alias b3 $80
+
+; fe09 values
+.alias r0 $01
+.alias r1 $02
+.alias r2 $04
+.alias r3 $08
+.alias g0 $10
+.alias g1 $20
+
+palette_fe08:
+.include "data/fe08.dat"
+
+palette_fe09:
+.include "data/fe09.dat"
+
+title_data:
