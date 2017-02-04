@@ -95,11 +95,11 @@ def read_sprite(lines):
 
 rainbow_colours = [red, yellow, green, cyan, blue, magenta]
 
-def rainbow(i):
+def rainbow(i, colours):
 
     # Each physical colour is used in two adjacent rows.
-    c1 = rainbow_colours[(i/4) % 6]
-    c2 = rainbow_colours[(((i+2)/4) + 1) % 6]
+    c1 = colours[(i/3) % len(colours)]
+    c2 = colours[(((i+1)/3) + 1) % len(colours)]
     return [black, c1, c2, white]
 
 if __name__ == "__main__":
@@ -123,8 +123,10 @@ if __name__ == "__main__":
     
     for i in range(256):
     
-        if i >= 128 + 68:
-            fe08, fe09 = get_entries(4, rainbow(i))
+        if i >= 128 + 112:
+            fe08, fe09 = get_entries(4, rainbow(i, [cyan, yellow, white]))
+        elif i >= 128 + 67:
+            fe08, fe09 = get_entries(4, rainbow(i, rainbow_colours))
         elif i >= 128 + 48:
             fe08, fe09 = get_entries(4, [black, yellow, green, cyan])
         elif i > 128:
@@ -175,6 +177,10 @@ if __name__ == "__main__":
     
     mgctitle = open("mgctitle.rom").read()
     mgctitle += code_data["MGCTITLE"]
+    padding = 16384 - len(mgctitle)
+    if padding > 0:
+        mgctitle += "\x00" * padding
+    
     open("mgctitle.rom", "w").write(mgctitle)
     
     # General ROM processing

@@ -33,7 +33,7 @@
 .alias visible_palette_lines_value 100
 .alias visible_palette_lines_max 188
 .alias initial_scroll_offset 0
-.alias initial_palette_offset 2
+.alias initial_palette_offset 3
 .alias end_scroll_offset 200
 
 .alias screen_low $76
@@ -52,8 +52,10 @@
 .alias title_dest_address $3000
 .alias title_dest_end $5800
 
+; Cycle a full range of palette colours (3 lines per colour, 6 colours,
+; 2 cycles -> 36 lines, with one extra that doesn't seem to mess up the flow).
 .alias title_palette_start [128 + 68]
-.alias title_palette_finish [128 + 68 + 40]
+.alias title_palette_finish [128 + 105]
 .alias palette_fe08 $2000
 .alias palette_fe09 $2100
 
@@ -325,7 +327,6 @@ main_loop:
 
         inx                     ; 2 c
 
-        nop
         dec palette_counter     ; 5 c
         bne palette_loop        ; 2 c
 
@@ -407,7 +408,6 @@ main_loop:
     sec                             ; Subtract the number of palette lines
     sbc text_lines                  ; to blank after the MODE 3 -> 1 change.
     sta palette_lines
-    clc
 
     lda visible_palette_lines
     cmp #visible_palette_lines_max
