@@ -96,11 +96,11 @@ def read_sprite(lines):
 
 rainbow_colours = [red, yellow, green, cyan, blue, magenta]
 
-def rainbow(i, colours):
+def rainbow(i, colours, s):
 
     # Each physical colour is used in two adjacent rows.
-    c1 = colours[(i/3) % len(colours)]
-    c2 = colours[(((i+1)/3) + 1) % len(colours)]
+    c1 = colours[(i/s) % len(colours)]
+    c2 = colours[(((i+1)/s) + 1) % len(colours)]
     return [black, c1, c2, white]
 
 if __name__ == "__main__":
@@ -123,11 +123,11 @@ if __name__ == "__main__":
     for i in range(256):
     
         if i >= 128 + 111:
-            fe08, fe09 = get_entries(4, [black, blue, green, white])
+            fe08, fe09 = get_entries(4, rainbow(i - 239, [yellow, cyan, white, green, blue, cyan], 3))
         elif i >= 128 + 67:
-            fe08, fe09 = get_entries(4, rainbow(i, rainbow_colours))
+            fe08, fe09 = get_entries(4, rainbow(i, rainbow_colours, 3))
         elif i >= 128 + 48:
-            fe08, fe09 = get_entries(4, [black, blue, green, cyan])
+            fe08, fe09 = get_entries(4, rainbow(i, [white, cyan, green, yellow], 3))
         elif i > 128:
             fe08, fe09 = get_entries(4, [black, blue, cyan, white])
         else:
