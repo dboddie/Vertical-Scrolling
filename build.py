@@ -123,7 +123,7 @@ if __name__ == "__main__":
     for i in range(256):
     
         if i >= 128 + 111:
-            fe08, fe09 = get_entries(4, rainbow(i - 239, [yellow, cyan, white, green, blue, cyan], 3))
+            fe08, fe09 = get_entries(4, rainbow(i - 239, [yellow, cyan, white, green, cyan], 3))
         elif i >= 128 + 67:
             fe08, fe09 = get_entries(4, rainbow(i, rainbow_colours, 3))
         elif i >= 128 + 48:
