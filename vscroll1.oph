@@ -258,7 +258,7 @@ main_loop:
     jsr wait_scanlines
 
     ldx text_lines
-    jsr block_scanlines
+    jsr wait_scanlines
 
     lda #$08                ; MODE 1
     sta $fe07
