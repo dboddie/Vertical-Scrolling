@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os, stat, struct, sys
 import Image
 
+from compressors.distance_pair import compress
 from palette import get_entries, black, red, green, yellow, blue, magenta, \
                     cyan, white
 import UEFfile
@@ -113,35 +114,27 @@ if __name__ == "__main__":
     
     # Special MGC title palette processing
     
-    fe08_f = open("data/fe08.dat", "w")
-    fe09_f = open("data/fe09.dat", "w")
-    fe08_f.write(".byte ")
-    fe09_f.write(".byte ")
+    fe08_data = []
+    fe09_data = []
     
     blank = get_entries(4, [black, black, black, black])
     standard = get_entries(4, [black, red, yellow, white])
     
     for i in range(256):
     
-        if i >= 128 + 112:
-            fe08, fe09 = get_entries(4, rainbow(i, [cyan, yellow, white]))
+        if i >= 128 + 111:
+            fe08, fe09 = get_entries(4, [black, blue, green, white])
         elif i >= 128 + 67:
             fe08, fe09 = get_entries(4, rainbow(i, rainbow_colours))
         elif i >= 128 + 48:
-            fe08, fe09 = get_entries(4, [black, yellow, green, cyan])
+            fe08, fe09 = get_entries(4, [black, blue, green, cyan])
         elif i > 128:
             fe08, fe09 = get_entries(4, [black, blue, cyan, white])
         else:
             fe08, fe09 = standard
         
-        fe08_f.write("$%02x" % fe08)
-        fe09_f.write("$%02x" % fe09)
-        if i != 255:
-            fe08_f.write(",")
-            fe09_f.write(",")
-    
-    fe08_f.close()
-    fe09_f.close()
+        fe08_data.append(fe08)
+        fe09_data.append(fe09)
     
     # Memory map
     code_start = 0x0e00
@@ -176,10 +169,10 @@ if __name__ == "__main__":
     # Special MGC title image processing
     
     mgctitle = open("mgctitle.rom").read()
-    mgctitle += code_data["MGCTITLE"]
-    padding = 16384 - len(mgctitle)
-    if padding > 0:
-        mgctitle += "\x00" * padding
+    mgctitle += "".join(map(chr, compress(fe08_data + fe09_data + map(ord, code_data["MGCTITLE"]))))
+    #padding = 16384 - len(mgctitle)
+    #if padding > 0:
+    #    mgctitle += "\x00" * padding
     
     open("mgctitle.rom", "w").write(mgctitle)
     
