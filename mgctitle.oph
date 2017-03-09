@@ -290,7 +290,8 @@ main_loop:
     jsr wait_scanlines
 
     ldx text_lines
-    jsr wait_scanlines
+    jsr wait_scanlines      ; Comment for use with Elkulator.
+    ;jsr block_scanlines    ; Uncomment for use with Elkulator.
 
     lda #$08                ; MODE 1
     sta $fe07
