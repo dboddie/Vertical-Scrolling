@@ -149,7 +149,8 @@ if __name__ == "__main__":
                 ("vscroll1.oph", "vscroll1.rom"),
                 ("vscrollpal1.oph", "vscrollpal1.rom"),
                 ("vscroll2.oph", "vscroll2.rom"),
-                ("mgctitle.oph", "mgctitle.rom")]
+                ("mgctitle.oph", "mgctitle.rom"),
+                ("mgccode.oph", "mgccode")]
     
     code_data = {}
     
@@ -169,6 +170,8 @@ if __name__ == "__main__":
     # Special MGC title image processing
     
     mgctitle = open("mgctitle.rom").read()
+    mgctitle += "\x00" * (256 - len(mgctitle))
+    mgctitle += open("mgccode").read()
     mgctitle += "".join(map(chr, compress(fe08_data + fe09_data + map(ord, code_data["MGCTITLE"]))))
     #padding = 16384 - len(mgctitle)
     #if padding > 0:
