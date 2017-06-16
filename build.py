@@ -124,9 +124,9 @@ if __name__ == "__main__":
     
         if i >= 128 + 111:
             fe08, fe09 = get_entries(4, rainbow(i - 239, [yellow, cyan, white, green, cyan], 3))
-        elif i >= 128 + 67:
+        elif i >= 128 + 65:
             fe08, fe09 = get_entries(4, rainbow(i, rainbow_colours, 3))
-        elif i >= 128 + 48:
+        elif i >= 128 + 46:
             fe08, fe09 = get_entries(4, rainbow(i, [white, cyan, green, yellow], 3))
         elif i > 128:
             fe08, fe09 = get_entries(4, [black, blue, cyan, white])
@@ -171,11 +171,13 @@ if __name__ == "__main__":
     
     mgctitle = open("mgctitle.rom").read()
     mgctitle += "\x00" * (256 - len(mgctitle))
-    mgctitle += open("mgccode").read()
-    mgctitle += "".join(map(chr, compress(fe08_data + fe09_data + map(ord, code_data["MGCTITLE"]))))
-    #padding = 16384 - len(mgctitle)
-    #if padding > 0:
-    #    mgctitle += "\x00" * padding
+    mgccode_and_data = open("mgccode").read()
+    mgccode_and_data += "".join(map(chr, compress(fe08_data + fe09_data + map(ord, code_data["MGCTITLE"]))))
+    open("mgccode", "w").write(mgccode_and_data)
+    mgctitle += mgccode_and_data
+    padding = 16384 - len(mgctitle)
+    if padding > 0:
+        mgctitle += "\x00" * padding
     
     open("mgctitle.rom", "w").write(mgctitle)
     
@@ -201,9 +203,11 @@ if __name__ == "__main__":
         sys.exit(1)
     
     # Remove the executable files.
+    keep = ["mgccode"]
+    
     for name, output in assemble:
         if name.endswith(".oph") and os.path.exists(output):
-            if not output.endswith(".rom"):
+            if not output.endswith(".rom") and output not in keep:
                 os.remove(output)
     
     # Exit
