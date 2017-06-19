@@ -103,6 +103,17 @@ def rainbow(i, colours, s):
     c2 = colours[(((i+1)/s) + 1) % len(colours)]
     return [black, c1, c2, white]
 
+def format_data(data):
+
+    s = ""
+    i = 0
+    while i < len(data):
+        s += ".byte " + ",".join(map(lambda c: "$%02x" % ord(c), data[i:i+24])) + "\n"
+        i += 24
+    
+    return s
+
+
 if __name__ == "__main__":
 
     if len(sys.argv) != 2:
@@ -141,16 +152,31 @@ if __name__ == "__main__":
     
     files = []
     
+    # Special MGC title image and code processing
+    
+    # Convert the PNG to screen data and compress it with the palette data.
+    mgctitle_sprite = read_sprite(read_png("images/mgctitle.png"))
+    mgcdata_list = "".join(map(chr, compress(fe08_data + fe09_data + map(ord, mgctitle_sprite))))
+    
+    # Read the code and append the formatted title data to it.
+    mgccode_temp = open("mgccode.oph").read() + "\n" + \
+        "title_data:\n" + format_data(mgcdata_list)
+    
+    # Write a "temporary" file containing the code and compressed title data.
+    # The mgctitle.oph file will include the decompression code.
+    # This file can be included in a UEF2ROM project that provides its own
+    # decompression code, or the dp_decode.oph sources can be appended to it.
+    open("mgccode-temp.oph", "w").write(mgccode_temp)
+    
     # Assemble the files.
     assemble = [("vscroll2-ram.oph", "VSCROLL2"),
                 ("vscroll-ram.oph", "VSCROLL"),
-                ("images/mgctitle.png", "MGCTITLE"),
+                #("images/mgctitle.png", "MGCTITLE"),
                 ("vscroll.oph", "vscroll.rom"),
                 ("vscroll1.oph", "vscroll1.rom"),
                 ("vscrollpal1.oph", "vscrollpal1.rom"),
                 ("vscroll2.oph", "vscroll2.rom"),
-                ("mgctitle.oph", "mgctitle.rom"),
-                ("mgccode.oph", "mgccode")]
+                ("mgctitle.oph", "mgctitle.rom")]
     
     code_data = {}
     
@@ -167,14 +193,7 @@ if __name__ == "__main__":
         
         code_data[output] = code
     
-    # Special MGC title image processing
-    
     mgctitle = open("mgctitle.rom").read()
-    mgctitle += "\x00" * (256 - len(mgctitle))
-    mgccode_and_data = open("mgccode").read()
-    mgccode_and_data += "".join(map(chr, compress(fe08_data + fe09_data + map(ord, code_data["MGCTITLE"]))))
-    open("mgccode", "w").write(mgccode_and_data)
-    mgctitle += mgccode_and_data
     padding = 16384 - len(mgctitle)
     if padding > 0:
         mgctitle += "\x00" * padding

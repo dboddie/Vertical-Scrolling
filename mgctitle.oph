@@ -140,5 +140,8 @@ service_command:
         cmp #13
         bne service_command_loop
 
-    jsr $8100               ; this is also defined in build.py and mgccode.oph
+    jsr main_mgc_code
     jmp service_command_claimed
+
+.include "dp_decode.oph"
+.include "mgccode-temp.oph"
