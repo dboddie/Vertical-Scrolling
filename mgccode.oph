@@ -35,7 +35,7 @@
 .alias visible_palette_lines_max 188
 .alias initial_scroll_offset 0
 .alias initial_palette_offset 3
-.alias end_scroll_offset 200
+;.alias end_scroll_offset 200           ; defined in the mgccode-*.oph files
 
 .alias screen_low $76
 .alias screen_high $77
@@ -52,12 +52,12 @@
 
 ; Cycle a full range of palette colours (3 lines per colour, 6 colours,
 ; 2 cycles -> 36 lines, with one extra that doesn't seem to mess up the flow).
-.alias title_palette_start [128 + 68]
-.alias title_palette_finish [128 + 105]
+;.alias title_palette_start [128 + 68]  ; defined in the mgccode-*.oph files
+;.alias title_palette_finish [128 + 105]; defined in the mgccode-*.oph files
 .alias palette_fe08 $2e00
 .alias palette_fe09 $2f00
 .alias title_dest_address $2e00
-.alias title_dest_end $5800
+;.alias title_dest_end $5800            ; defined in the mgccode-*.oph files
 
 main_mgc_code:
 
@@ -348,15 +348,18 @@ end_loop:
 
     cli
 
-    ; Exit to MODE 6.
-    lda #22
-    jsr $ffee
-    lda #6
+    lda #12     ; CLS
     jsr $ffee
 
-    lda #15
-    ldx #1
-    jsr $fff4
+    ; Exit to MODE 6.
+    ;lda #22
+    ;jsr $ffee
+    ;lda #6
+    ;jsr $ffee
+
+    ;lda #15
+    ;ldx #1
+    ;jsr $fff4
 
     rts
 

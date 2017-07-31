@@ -113,6 +113,39 @@ def format_data(data):
     
     return s
 
+def mgc_palette(full = True):
+
+    # Special MGC title palette processing
+    
+    fe08_data = []
+    fe09_data = []
+    
+    blank = get_entries(4, [black, black, black, black])
+    standard = get_entries(4, [black, red, yellow, white])
+    
+    if full:
+        s1, s2 = 111, 65
+    else:
+        s1, s2 = 43, 3
+    
+    for i in range(256):
+    
+        if i >= 128 + s1:
+            fe08, fe09 = get_entries(4, rainbow(i - 239, [yellow, cyan, white, green, cyan], 3))
+        elif i >= 128 + s2:
+            fe08, fe09 = get_entries(4, rainbow(i, rainbow_colours, 3))
+        elif full and i >= 128 + 46:
+            fe08, fe09 = get_entries(4, rainbow(i, [white, cyan, green, yellow], 3))
+        elif full and i > 128:
+            fe08, fe09 = get_entries(4, [black, blue, cyan, white])
+        else:
+            fe08, fe09 = standard
+        
+        fe08_data.append(fe08)
+        fe09_data.append(fe09)
+    
+    return fe08_data, fe09_data
+
 
 if __name__ == "__main__":
 
@@ -123,30 +156,6 @@ if __name__ == "__main__":
     
     out_uef_file = sys.argv[1]
     
-    # Special MGC title palette processing
-    
-    fe08_data = []
-    fe09_data = []
-    
-    blank = get_entries(4, [black, black, black, black])
-    standard = get_entries(4, [black, red, yellow, white])
-    
-    for i in range(256):
-    
-        if i >= 128 + 111:
-            fe08, fe09 = get_entries(4, rainbow(i - 239, [yellow, cyan, white, green, cyan], 3))
-        elif i >= 128 + 65:
-            fe08, fe09 = get_entries(4, rainbow(i, rainbow_colours, 3))
-        elif i >= 128 + 46:
-            fe08, fe09 = get_entries(4, rainbow(i, [white, cyan, green, yellow], 3))
-        elif i > 128:
-            fe08, fe09 = get_entries(4, [black, blue, cyan, white])
-        else:
-            fe08, fe09 = standard
-        
-        fe08_data.append(fe08)
-        fe09_data.append(fe09)
-    
     # Memory map
     code_start = 0x0e00
     
@@ -156,27 +165,42 @@ if __name__ == "__main__":
     
     # Convert the PNG to screen data and compress it with the palette data.
     mgctitle_sprite = read_sprite(read_png("images/mgctitle.png"))
+    fe08_data, fe09_data = mgc_palette(full = True)
     mgcdata_list = "".join(map(chr, compress(fe08_data + fe09_data + map(ord, mgctitle_sprite))))
     
-    # Read the code and append the formatted title data to it.
-    mgccode_temp = open("mgccode.oph").read() + "\n" + \
-        "title_data:\n" + format_data(mgcdata_list)
+    mgctitle_small_sprite = read_sprite(read_png("images/mgctitle-trimmed.png"))
+    fe08_data, fe09_data = mgc_palette(full = False)
+    mgcdata_small_list = "".join(map(chr, compress(fe08_data + fe09_data + map(ord, mgctitle_small_sprite))))
     
-    # Write a "temporary" file containing the code and compressed title data.
+    # Read the code and append the formatted title data to it.
+    mgccode_temp = open("mgccode-full.oph").read()
+    mgccode_temp = mgccode_temp.replace('.include "mgccode.oph"\n',
+                                        open("mgccode.oph").read())
+    mgccode_temp += "\n" + "title_data:\n" + format_data(mgcdata_list)
+    
+    mgccode_small_temp = open("mgccode-small.oph").read()
+    mgccode_small_temp = mgccode_small_temp.replace('.include "mgccode.oph"\n',
+                         open("mgccode.oph").read())
+    mgccode_small_temp += "\n" + "title_data:\n" + format_data(mgcdata_small_list)
+    
+    # Write "temporary" files containing the code and compressed title data.
     # The mgctitle.oph file will include the decompression code.
     # This file can be included in a UEF2ROM project that provides its own
     # decompression code, or the dp_decode.oph sources can be appended to it.
     open("mgccode-temp.oph", "w").write(mgccode_temp)
+    open("mgccode-small-temp.oph", "w").write(mgccode_small_temp)
     
     # Assemble the files.
     assemble = [("vscroll2-ram.oph", "VSCROLL2"),
                 ("vscroll-ram.oph", "VSCROLL"),
-                #("images/mgctitle.png", "MGCTITLE"),
+                ("images/mgctitle-trimmed.png", "MGCTITLE"),
                 ("vscroll.oph", "vscroll.rom"),
                 ("vscroll1.oph", "vscroll1.rom"),
                 ("vscrollpal1.oph", "vscrollpal1.rom"),
                 ("vscroll2.oph", "vscroll2.rom"),
-                ("mgctitle.oph", "mgctitle.rom")]
+                ("mgctitle.oph", "mgctitle.rom"),
+                ("mgctitle-trimmed.oph", "MGCTRIMMED"),
+                ("mgccode-trimmed.oph", "MGCCODE")]
     
     code_data = {}
     
@@ -193,12 +217,45 @@ if __name__ == "__main__":
         
         code_data[output] = code
     
+    # Create a full MGC title ROM.
     mgctitle = open("mgctitle.rom").read()
     padding = 16384 - len(mgctitle)
     if padding > 0:
         mgctitle += "\x00" * padding
     
     open("mgctitle.rom", "w").write(mgctitle)
+    
+    # Create a ROM that uses the trimmed title image.
+    
+    code_start = 0x3910
+    mgctrimmed = open("MGCTRIMMED").read()
+    
+    # Pad out the space between the ROM code and the title code.
+    mgctrimmed += "\x00" * (code_start - len(mgctrimmed))
+    
+    # Create the palette data for the trimmed image.
+    fe08_data, fe09_data = mgc_palette(full = False)
+    mgccode_and_data = open("MGCCODE").read()
+    mgccode_and_data += "".join(map(chr, compress(fe08_data + fe09_data + map(ord, code_data["MGCTITLE"]))))
+    
+    if len(mgccode_and_data) > 0x4000 - code_start:
+        print "*" * 77
+        print "Code and data exceeds allocated space."
+        print "Change the start address from $%x to $%x in mgccode-trimmed.oph" % (
+            0x8000 + code_start, 0xc000 - len(mgccode_and_data))
+        print "and mgctitle-trimmed.oph."
+        print "*" * 77
+    
+    # Write the code to a file for use with other ROMs.
+    open("mgccode", "w").write(mgccode_and_data)
+    
+    # Finish writing the ROM.
+    mgctrimmed += mgccode_and_data
+    padding = 16384 - len(mgctrimmed)
+    if padding > 0:
+        mgctrimmed += "\x00" * padding
+
+    open("mgctrimmed.rom", "w").write(mgctrimmed)
     
     # General ROM processing
     
