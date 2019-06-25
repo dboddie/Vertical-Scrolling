@@ -168,6 +168,9 @@ if __name__ == "__main__":
     fe08_data, fe09_data = mgc_palette(full = True)
     mgcdata_list = "".join(map(chr, compress(fe08_data + fe09_data + map(ord, mgctitle_sprite))))
     
+    # Write the uncompressed title data to a file for other tools to use.
+    open("TITLE", "wb").write("".join(map(chr, fe08_data + fe09_data)) + mgctitle_sprite)
+    
     mgctitle_small_sprite = read_sprite(read_png("images/mgctitle-trimmed.png"))
     fe08_data, fe09_data = mgc_palette(full = False)
     mgcdata_small_list = "".join(map(chr, compress(fe08_data + fe09_data + map(ord, mgctitle_small_sprite))))
